@@ -15,6 +15,7 @@ beautifulsoup4 = "^4.12.3"
 requests = "^2.32.3"
 progressbar = "^2.5"
 lxml = "^5.2.2"
+click = "^8.1.7"
 
 [tool.poetry.group.testing.dependencies]
 ruff = "^0.4.10"

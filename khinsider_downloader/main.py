@@ -1,115 +1,85 @@
 import os
-import requests as req
+from pathlib import Path
+
+import click
 import progressbar as prgbar
+import requests as req
 from bs4 import BeautifulSoup as bs
 
-def main():
-    ...
+ALBUM_BASE_URL = 'https://downloads.khinsider.com/game-soundtracks/album/'
 
-def mkDir(path: str):
-    '''
-    Creates a new directory with implemented exception handling
-    and debug outputs
-    '''
-    if not(os.path.isdir(path)):
-        try:
-            os.mkdir(path)
-        except OSError:
-            print(f'Error while creating directory {path}!')
-            exit()
-        else:
-            print(f'Created directory {path}.')
+DOWNLOAD_PATH = Path('./Download')
 
-# Рабочая ссылка
-WORK_LINK = 'https://downloads.khinsider.com/game-soundtracks/album/'
 
-# Путь до загрузочной папки
-new_path = os.path.join(os.path.curdir,'Download')
+def check_url(url: str) -> bool:
+    """Check if url is a valid khinsider album url."""
+    return url.startswith(ALBUM_BASE_URL)
 
-#-------------------------------------------------------------------------------#
 
-# Проверка на наличие загрузочной директории и её создание в случае отсутствия
+@click.command()
+@click.argument('album_url')
+def main(album_url: str) -> None:
+    """Download all audio files from album_url."""
+    if not check_url(album_url):
+        print(f'Invalid link: {album_url}!')
+        return
 
-mkDir(new_path)
+    dir_name = album_url.removeprefix(ALBUM_BASE_URL)
+    album_dir_path = DOWNLOAD_PATH / dir_name
+    album_dir_path.mkdir(exist_ok=True, parents=True)
 
-#-------------------------------------------------------------------------------#
+    response = req.get(album_url)
+    text = response.text
+    if any(line in text for line in ('No such album', 'Click here')):
+        print('Album not found or invalid link!')
+        return
 
-# Ввод ссылки на альбом и проверка на её действительность
-main_url = input('Input the album link(album root link): ')
-if not main_url.startswith(WORK_LINK):
-    print(f'Invalid link: {main_url}!')
-    input()
-    exit()
+    soup = bs(text, 'lxml')
+    songlist_items = soup.select_one('#songlist').select('tr')
 
-file_name = main_url[len(WORK_LINK):]
-album_dir = os.path.join(new_path, file_name)
+    for child in songlist_items:
+        if not child.select('td'):
+            continue
 
-# Запрос на получение данных (html) со страницы
+        tag_anchor = child.select_one('a')
+        if not tag_anchor:
+            continue
 
-url_response = req.get(main_url)
-if any(map(lambda x: x in url_response.text, ('No such album', 'Click here'))):
-    print('Album not found or invalid link')
-    input()
-    exit()
-
-# Создание директории альбома
-mkDir(album_dir)
-
-# Основная страница
-home_page = bs(url_response.text, 'lxml')
-
-# Таблица, содержащая список аудио
-music_table = home_page.find(id = 'songlist').children
-
-# Добыча ссылок с главной страницы
-for child in music_table:
-
-    # Отсев первого элемента(Заглавная строка таблицы)
-    if not child.find('td'):
-        continue
-
-    # Поиск тега a в дереве элемента (ссылка)
-    tag_a = child.find('a')
-
-    # Отсев ненужных значений
-    if type(tag_a) != int:
-
-        # Индивидуальная ссылка
-        link = tag_a.attrs['href']
+        link = tag_anchor.attrs['href']
         new_link = 'https://downloads.khinsider.com' + link
 
-        # Получение ссылки на файл
         individual_link = req.get(new_link)
         child_page = bs(individual_link.text, 'lxml')
-        audio_link = child_page.find('audio').attrs['src']
+        audio_link = child_page.select_one('audio').attrs['src']
 
-        # Загрузка файла
         audio = req.get(audio_link, stream=True)
-
-        file_name = audio_link[audio_link.rfind('/') + 1:]
+        file_name = audio_link[audio_link.rfind('/') + 1 :]
 
         url = 'https://www.urldecode.org'
         params = {'text': file_name, 'mode': 'decode'}
-        decoded_name = bs(req.get(url, params=params).text, 'lxml').find('input').attrs['value']
+        decoded_name = (
+            bs(req.get(url, params=params).text, 'lxml')
+            .find('input')
+            .attrs['value']
+        )
 
         audio_total_length = int(audio.headers.get('content-length'))
 
         bar = prgbar.ProgressBar(
             maxval=audio_total_length,
             widgets=[
-            decoded_name, # Статический текст
-            prgbar.Bar(left='[', marker='=', right=']'), # Прогресс
-            prgbar.SimpleProgress(), # Надпись "6 из 10"
-                ]
+                decoded_name,  # Статический текст
+                prgbar.Bar(left='[', marker='=', right=']'),  # Прогресс
+                prgbar.SimpleProgress(),  # Надпись "6 из 10"
+            ],
         ).start()
 
         audio_current_length = 0
-        with open(os.path.join(album_dir, decoded_name), 'wb') as f:
+        with open(os.path.join(album_dir_path, decoded_name), 'wb') as f:
             for data in audio.iter_content(chunk_size=2048):
                 f.write(data)
                 audio_current_length += len(data)
                 bar.update(audio_current_length)
-            print(decoded_name + ' : Download completed                                                   ')
+            print(decoded_name + ' : Download completed' + ' ' * 51)
 
-print('All files downloaded!')
-input()
+    print('All files downloaded!')
