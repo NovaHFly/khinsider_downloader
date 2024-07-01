@@ -3,6 +3,9 @@ import requests as req
 import progressbar as prgbar
 from bs4 import BeautifulSoup as bs
 
+def main():
+    ...
+
 def mkDir(path: str):
     '''
     Creates a new directory with implemented exception handling

@@ -3,4 +3,7 @@
 A simple mp3 audio downloader from downloads.khinsider.com.
 Based on requests and beautifulsoup.
 
+Usage:
+    khin_download
+
 One of my old projects.

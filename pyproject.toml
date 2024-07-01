@@ -6,6 +6,9 @@ authors = ["NovaHFly <mugiviska@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
+[tool.poetry.scripts]
+khin_download = "khinsider_downloader.main:main"
+
 [tool.poetry.dependencies]
 python = "^3.10"
 beautifulsoup4 = "^4.12.3"
