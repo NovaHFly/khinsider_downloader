@@ -1,20 +1,22 @@
 [tool.poetry]
-name = "sampleproject"
+name = "khinsider-downloader"
 version = "0.1.0"
-description = "Sample project"
+description = "Requests-based music downloader from downloads.khinsider.com"
 authors = ["NovaHFly <mugiviska@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
-
 [tool.poetry.dependencies]
 python = "^3.10"
+beautifulsoup4 = "^4.12.3"
+requests = "^2.32.3"
+progressbar = "^2.5"
+lxml = "^5.2.2"
 
 [tool.poetry.group.testing.dependencies]
 ruff = "^0.4.10"
 mypy = "^1.10.1"
 pytest = "^8.2.2"
-
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

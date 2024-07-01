@@ -1,8 +1,6 @@
-# Sample project
+# Khinsider audio downloader
 
-## Project setup checklist
-- Change project name and description in pyproject.toml
-- Add project dependencies
-- Add or remove additional_config
-- Add project source root and tests dirs
-- Update testing tools config depending on project structure
+A simple mp3 audio downloader from downloads.khinsider.com.
+Based on requests and beautifulsoup.
+
+One of my old projects.
