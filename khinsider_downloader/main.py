@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import click
@@ -7,6 +6,7 @@ import requests as req
 from bs4 import BeautifulSoup as bs
 
 ALBUM_BASE_URL = 'https://downloads.khinsider.com/game-soundtracks/album/'
+URL_DECODE_API = 'https://www.urldecode.org'
 
 DOWNLOAD_PATH = Path('./Download')
 
@@ -14,6 +14,48 @@ DOWNLOAD_PATH = Path('./Download')
 def check_url(url: str) -> bool:
     """Check if url is a valid khinsider album url."""
     return url.startswith(ALBUM_BASE_URL)
+
+
+def make_album_dir(album_url: str) -> Path:
+    """Create and return album download dir path."""
+    dir_name = album_url.removeprefix(ALBUM_BASE_URL)
+    album_dir_path = DOWNLOAD_PATH / dir_name
+    album_dir_path.mkdir(exist_ok=True, parents=True)
+    return album_dir_path
+
+
+def get_audio_url_from(detail_path: str) -> str:
+    """Get audio file url from song detail path."""
+    item_detail_url = 'https://downloads.khinsider.com' + detail_path
+
+    response = req.get(item_detail_url)
+    soup = bs(response.text, 'lxml')
+
+    audio_url = soup.select_one('audio').attrs['src']
+    return audio_url
+
+
+def url_decode_string(string: str) -> str:
+    """Decode url-encoded character in the string."""
+    params = {'text': string, 'mode': 'decode'}
+    decoded_string = (
+        bs(req.get(URL_DECODE_API, params=params).text, 'lxml')
+        .select_one('input')
+        .attrs['value']
+    )
+    return decoded_string
+
+
+def create_progress_bar(total_length: int, caption: str) -> prgbar.ProgressBar:
+    """Create a progress bar to track file download."""
+    return prgbar.ProgressBar(
+        maxval=total_length,
+        widgets=[
+            caption,
+            prgbar.Bar(left='[', marker='=', right=']'),
+            prgbar.SimpleProgress(),
+        ],
+    ).start()
 
 
 @click.command()
@@ -24,12 +66,12 @@ def main(album_url: str) -> None:
         print(f'Invalid link: {album_url}!')
         return
 
-    dir_name = album_url.removeprefix(ALBUM_BASE_URL)
-    album_dir_path = DOWNLOAD_PATH / dir_name
-    album_dir_path.mkdir(exist_ok=True, parents=True)
+    album_dir_path = make_album_dir(album_url)
 
     response = req.get(album_url)
+
     text = response.text
+
     if any(line in text for line in ('No such album', 'Click here')):
         print('Album not found or invalid link!')
         return
@@ -37,49 +79,31 @@ def main(album_url: str) -> None:
     soup = bs(text, 'lxml')
     songlist_items = soup.select_one('#songlist').select('tr')
 
-    for child in songlist_items:
-        if not child.select('td'):
+    for item in songlist_items:
+        if not item.select('td'):
             continue
 
-        tag_anchor = child.select_one('a')
+        tag_anchor = item.select_one('a')
         if not tag_anchor:
             continue
 
-        link = tag_anchor.attrs['href']
-        new_link = 'https://downloads.khinsider.com' + link
+        item_detail_path = tag_anchor.attrs['href']
+        audio_url = get_audio_url_from(item_detail_path)
 
-        individual_link = req.get(new_link)
-        child_page = bs(individual_link.text, 'lxml')
-        audio_link = child_page.select_one('audio').attrs['src']
+        file_name = audio_url.rsplit('/', maxsplit=1)[-1]
+        file_name = url_decode_string(file_name)
 
-        audio = req.get(audio_link, stream=True)
-        file_name = audio_link[audio_link.rfind('/') + 1 :]
+        stream = req.get(audio_url, stream=True)
+        audio_total_length = int(stream.headers.get('content-length'))
 
-        url = 'https://www.urldecode.org'
-        params = {'text': file_name, 'mode': 'decode'}
-        decoded_name = (
-            bs(req.get(url, params=params).text, 'lxml')
-            .find('input')
-            .attrs['value']
-        )
-
-        audio_total_length = int(audio.headers.get('content-length'))
-
-        bar = prgbar.ProgressBar(
-            maxval=audio_total_length,
-            widgets=[
-                decoded_name,  # Статический текст
-                prgbar.Bar(left='[', marker='=', right=']'),  # Прогресс
-                prgbar.SimpleProgress(),  # Надпись "6 из 10"
-            ],
-        ).start()
+        bar = create_progress_bar(audio_total_length, file_name)
 
         audio_current_length = 0
-        with open(os.path.join(album_dir_path, decoded_name), 'wb') as f:
-            for data in audio.iter_content(chunk_size=2048):
+        with (album_dir_path / file_name).open('wb') as f:
+            for data in stream.iter_content(chunk_size=2048):
                 f.write(data)
                 audio_current_length += len(data)
                 bar.update(audio_current_length)
-            print(decoded_name + ' : Download completed' + ' ' * 51)
+            print(file_name + ' : Download completed'.ljust(128))
 
     print('All files downloaded!')
