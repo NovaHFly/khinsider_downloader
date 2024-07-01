@@ -1,0 +1,52 @@
+
+line-length = 79
+exclude = [
+    "tests/",
+    ".venv/",
+]
+
+[lint]
+extend-select = [
+    "D",
+    "A",
+    "B0",
+    "E",
+    "I",
+    "N",
+    "Q",
+    "W",
+    "UP",
+    "ERA",
+    "ANN",
+    "FIX",
+    "C90",
+    "RUF",
+]
+ignore = [
+    "D100",
+    "D104",
+    "D203",
+    "N813",
+    "D213",
+    "ANN002",
+    "ANN003",
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+preview = true
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.isort]
+combine-as-imports = true
+
+[lint.flake8-quotes]
+inline-quotes = "single"
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+quote-style = "single"
