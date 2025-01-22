@@ -43,6 +43,8 @@ def construct_argparser() -> argparse.ArgumentParser:
         nargs='*',
         default=[],
     )
+    parser.add_argument('--threads', '-t', type=int, default=THREAD_COUNT)
+
     return parser
 
 
@@ -74,8 +76,8 @@ def scrape_album_track_urls(url: str) -> list[str]:
 
 
 class KhinsiderDownloader:
-    def __init__(self):
-        self.worker_limit = THREAD_COUNT
+    def __init__(self, *, thread_limit: int = THREAD_COUNT) -> None:
+        self.thread_limit = thread_limit
         self.executor = None
         self.tasks = []
 
@@ -104,7 +106,7 @@ class KhinsiderDownloader:
             f.write(audio_response.content)
 
     def __enter__(self):
-        self.executor = ThreadPoolExecutor(max_workers=self.worker_limit)
+        self.executor = ThreadPoolExecutor(max_workers=self.thread_limit)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -140,7 +142,7 @@ def main() -> None:
 
         track_links.extend(scrape_album_track_urls(link))
 
-    with KhinsiderDownloader() as downloader:
+    with KhinsiderDownloader(thread_limit=args.threads) as downloader:
         for link in track_links:
             downloader.submit_download(link)
 
