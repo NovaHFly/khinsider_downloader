@@ -28,6 +28,15 @@ DOWNLOADS_PATH = Path('downloads')
 THREAD_COUNT = 6
 
 
+def construct_argparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--file',
+        '-f',
+        help='File containing album or track urls',
+        required=True,
+    )
+    return parser
 @retry(stop=stop_after_attempt(5))
 def get_http(url: str) -> httpx.Response:
     try:
@@ -103,13 +112,7 @@ class KhinsiderDownloader:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--file',
-        '-f',
-        help='File containing links to be downloaded',
-        required=True,
-    )
+    parser = construct_argparser()
     args = parser.parse_args()
 
     links_from_file = read_links_from_file(args.file)
