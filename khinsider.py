@@ -19,7 +19,7 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 KHINSIDER_URL_REGEX = (
     r'https:\/\/downloads\.khinsider\.com\/'
-    r'game-soundtracks\/album\/([\w-]+)\/?([\w%.]+)?'
+    r'game-soundtracks\/album\/([\w-]+)\/?([\w%.-]+)?'
 )
 KHINSIDER_BASE_URL = 'https://downloads.khinsider.com'
 
