@@ -81,12 +81,13 @@ class KhinsiderDownloader:
         self.executor = None
         self.tasks = []
 
-    def download_track(self, url: str):
+    def download_track(self, url: str) -> int:
         match = re.match(KHINSIDER_URL_REGEX, url)
 
         if not match:
-            logging.error(f'Invalid track link: {url}')
-            return
+            err_msg = f'Invalid track link: {url}'
+            logging.error(err_msg)
+            raise ValueError(err_msg)
 
         album_slug = match[1]
         track_filename = unquote(unquote(match[2]))
@@ -104,6 +105,8 @@ class KhinsiderDownloader:
 
         with file_path.open('wb') as f:
             f.write(audio_response.content)
+
+        return int(audio_response.headers['content-length'])
 
     def __enter__(self):
         self.executor = ThreadPoolExecutor(max_workers=self.thread_limit)
@@ -145,6 +148,17 @@ def main() -> None:
     with KhinsiderDownloader(thread_limit=args.threads) as downloader:
         for link in track_links:
             downloader.submit_download(link)
+
+    download_count = len(downloader.tasks)
+    successful_tasks = [
+        task for task in downloader.tasks if not task.exception()
+    ]
+    success_count = len(successful_tasks)
+
+    downloaded_bytes = sum(task.result() for task in successful_tasks)
+
+    logging.info(f'Downloaded {success_count}/{download_count} tracks')
+    logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
 
 
 if __name__ == '__main__':
