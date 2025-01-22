@@ -30,13 +30,22 @@ THREAD_COUNT = 6
 
 def construct_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
         '--file',
         '-f',
         help='File containing album or track urls',
-        required=True,
+        required=False,
+    )
+    input_group.add_argument(
+        'URLS',
+        help='Album or track urls',
+        nargs='*',
+        default=[],
     )
     return parser
+
+
 @retry(stop=stop_after_attempt(5))
 def get_http(url: str) -> httpx.Response:
     try:
@@ -115,7 +124,9 @@ def main() -> None:
     parser = construct_argparser()
     args = parser.parse_args()
 
-    links_from_file = read_links_from_file(args.file)
+    links_from_file = (
+        args.URLS if args.URLS else read_links_from_file(args.file)
+    )
     track_links = []
 
     for link in links_from_file:
