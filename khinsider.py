@@ -115,6 +115,12 @@ httpx.request = retry(stop=stop_after_attempt(5))(
 
 class KhinsiderDownloader:
     def __init__(self, *, thread_limit: int = THREAD_COUNT) -> None:
+        """Khinsider downloader.
+
+        Args:
+            thread_limit (int, optional): Thread limit.
+                Defaults to THREAD_COUNT.
+        """
         self.thread_limit = thread_limit
         self._executor = None
         self._tasks = []
