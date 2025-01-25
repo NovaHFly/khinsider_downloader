@@ -1,6 +1,7 @@
 import argparse
 import logging
 import re
+import time
 from concurrent.futures import (
     as_completed,
     Future,
@@ -102,6 +103,22 @@ def log_errors(
         return decorator(func)
 
     return decorator
+
+
+def log_time(func: Callable[P, T]) -> Callable[P, T]:
+    """Decorator to log real time elapsed by function."""
+
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        logging.info(
+            f'{func.__name__} took {end_time - start_time:.2f} seconds'
+        )
+        return result
+
+    return wrapper
 
 
 httpx.request = retry(stop=stop_after_attempt(5))(
