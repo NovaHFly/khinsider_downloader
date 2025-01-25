@@ -113,19 +113,6 @@ httpx.request = retry(stop=stop_after_attempt(5))(
 )
 
 
-def scrape_album_track_urls(url: str) -> list[str]:
-    response = httpx.request('GET', url)
-
-    soup = bs(response.text, 'lxml')
-    songlist_rows = soup.select_one('#songlist').select('tr')
-
-    return [
-        KHINSIDER_BASE_URL + anchor['href']
-        for row in songlist_rows
-        if (anchor := row.select_one('td a'))
-    ]
-
-
 class KhinsiderDownloader:
     def __init__(self, *, thread_limit: int = THREAD_COUNT) -> None:
         self.thread_limit = thread_limit
@@ -157,12 +144,36 @@ class KhinsiderDownloader:
         with file_path.open('wb') as f:
             f.write(audio_response.content)
 
-        return int(audio_response.headers['content-length'])
+    def scrape_track_urls_from_album(self, url: str) -> list[str]:
+        """Scrape track urls from album url.
+
+        Args:
+            url (str): khinsider album url.
+
+        Returns:
+            list[str]: List of track urls.
+        """
+        response = httpx.request('GET', url)
+
+        soup = bs(response.text, 'lxml')
+        songlist_rows = soup.select_one('#songlist').select('tr')
+
+        return [
+            KHINSIDER_BASE_URL + anchor['href']
+            for row in songlist_rows
+            if (anchor := row.select_one('td a'))
+        ]
 
     def __enter__(self):
         self._executor = ThreadPoolExecutor(max_workers=self.thread_limit)
         return self
 
+    def __exit__(
+        self,
+        exc_type: Type[Exception],
+        exc_value: Exception,
+        traceback: TracebackType,
+    ) -> None:
         wait(self._tasks)
         self._executor.shutdown()
         self._executor = None
@@ -189,6 +200,7 @@ def main() -> None:
     links_from_file = (
         args.URLS if args.URLS else Path(args.file).read_text().splitlines()
     )
+    album_links = []
     track_links = []
 
     for link in links_from_file:
@@ -200,11 +212,19 @@ def main() -> None:
             track_links.append(link)
             continue
 
-        track_links.extend(scrape_album_track_urls(link))
+        album_links.append(link)
 
     with KhinsiderDownloader(thread_limit=args.threads) as downloader:
-        for link in track_links:
-            downloader.submit_task(downloader.download_track, link)
+        album_scrape_tasks = [
+            downloader.submit_task(
+                downloader.scrape_track_urls_from_album, link
+            )
+            for link in album_links
+        ]
+        wait(album_scrape_tasks)
+        for scrape_task in album_scrape_tasks:
+            track_links.extend(scrape_task.result())
+
         download_tasks = [
             downloader.submit_task(downloader.download_track, link)
             for link in track_links
