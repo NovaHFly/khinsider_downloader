@@ -119,7 +119,16 @@ class KhinsiderDownloader:
         self._executor = None
         self._tasks = []
 
-    def download_track(self, url: str) -> int:
+    def scrape_track_data(self, url: str, get_size: bool = True) -> AudioTrack:
+        """Scrape track data from url.
+
+        Args:
+            url (str): khinsider track url.
+            get_size (bool, optional): Get track size. Defaults to True.
+
+        Returns:
+            AudioTrack: Track data.
+        """
         match = re.match(KHINSIDER_URL_REGEX, url)
 
         if not match:
@@ -129,20 +138,55 @@ class KhinsiderDownloader:
 
         album_slug = match[1]
         track_filename = unquote(unquote(match[2]))
-        logging.info(f'Downloading track {track_filename} from {album_slug}')
 
         response = httpx.request('GET', url)
 
         soup = bs(response.text, 'lxml')
         audio_url = soup.select_one('audio')['src']
 
-        audio_response = get_http(audio_url)
+        track_size = (
+            int(httpx.request('HEAD', audio_url).headers['content-length'])
+            if get_size
+            else 0
+        )
 
-        file_path = DOWNLOADS_PATH / album_slug / track_filename
+        return AudioTrack(track_filename, album_slug, audio_url, track_size)
+
+    def download_track_file(self, track: AudioTrack) -> Path:
+        """Download track file.
+
+        Args:
+            track (AudioTrack): Track data.
+
+        Returns:
+            Path: Downloaded track file path.
+        """
+        logging.info(f'Downloading track {track}...')
+
+        response = httpx.request('GET', track.url)
+
+        file_path = DOWNLOADS_PATH / track.album_slug / track.filename
         file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        if not track.size:
+            track.size = int(response.headers['content-length'])
+
         with file_path.open('wb') as f:
-            f.write(audio_response.content)
+            f.write(response.content)
+
+        return file_path
+
+    def download_track(self, url: str) -> tuple[AudioTrack, Path]:
+        """Get track data and download it.
+
+        Args:
+            url (str): khinsider track url.
+
+        Returns:
+            tuple[AudioTrack, Path]: Track data and downloaded track file path.
+        """
+        track = self.scrape_track_data(url, get_size=False)
+        return track, self.download_track_file(track)
 
     def scrape_track_urls_from_album(self, url: str) -> list[str]:
         """Scrape track urls from album url.
