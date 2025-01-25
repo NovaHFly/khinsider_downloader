@@ -81,19 +81,10 @@ def log_errors(
 ) -> Callable[P, T] | Decorator:
     """A decorator to log exceptions.
 
-    If the decorated function raises an exception,
+    If the decorated function raises one of expected exceptions,
     it will be logged and re-raised.
+
     Decorator can be used with or without arguments.
-
-    Args:
-        func (Callable[P, T], optional): The function to decorate.
-            Defaults to None.
-        expected_exceptions (ExceptionGroup, optional): The exceptions to log.
-            Defaults to Exception.
-
-    Returns:
-        Callable[P, T] | Decorator:
-        The decorated function or the decorator.
     """
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
