@@ -1,7 +1,8 @@
 import argparse
 import logging
 import re
-from concurrent.futures import ThreadPoolExecutor, wait
+from concurrent.futures import Future, ThreadPoolExecutor, wait
+from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -26,6 +27,16 @@ KHINSIDER_BASE_URL = 'https://downloads.khinsider.com'
 DOWNLOADS_PATH = Path('downloads')
 
 THREAD_COUNT = 6
+
+@dataclass
+class AudioTrack:
+    filename: str
+    album_slug: str
+    url: str
+    size: int = 0
+
+    def __str__(self):
+        return f'{self.album_slug} - {self.filename}'
 
 
 def construct_argparser() -> argparse.ArgumentParser:
