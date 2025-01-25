@@ -129,8 +129,8 @@ def scrape_album_track_urls(url: str) -> list[str]:
 class KhinsiderDownloader:
     def __init__(self, *, thread_limit: int = THREAD_COUNT) -> None:
         self.thread_limit = thread_limit
-        self.executor = None
-        self.tasks = []
+        self._executor = None
+        self._tasks = []
 
     def download_track(self, url: str) -> int:
         match = re.match(KHINSIDER_URL_REGEX, url)
@@ -160,20 +160,26 @@ class KhinsiderDownloader:
         return int(audio_response.headers['content-length'])
 
     def __enter__(self):
-        self.executor = ThreadPoolExecutor(max_workers=self.thread_limit)
+        self._executor = ThreadPoolExecutor(max_workers=self.thread_limit)
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        wait(self.tasks)
-        self.executor.shutdown()
-        self.executor = None
+        wait(self._tasks)
+        self._executor.shutdown()
+        self._executor = None
+        self._tasks = []
 
-    def submit_download(self, link: str):
-        if not self.executor:
+    def submit_task(
+        self,
+        func: Callable[..., T],
+        *args,
+        **kwargs,
+    ) -> Future[T]:
+        if not self._executor:
             raise RuntimeError('Executor is not running')
 
-        logging.info(f'{link} submitted for download!')
-        self.tasks.append(self.executor.submit(self.download_track, link))
+        task = self._executor.submit(func, *args, **kwargs)
+        self._tasks.append(task)
+        return task
 
 
 def main() -> None:
@@ -198,15 +204,19 @@ def main() -> None:
 
     with KhinsiderDownloader(thread_limit=args.threads) as downloader:
         for link in track_links:
-            downloader.submit_download(link)
+            downloader.submit_task(downloader.download_track, link)
+        download_tasks = [
+            downloader.submit_task(downloader.download_track, link)
+            for link in track_links
+        ]
 
-    download_count = len(downloader.tasks)
+    download_count = len(download_tasks)
     successful_tasks = [
-        task for task in downloader.tasks if not task.exception()
+        task for task in download_tasks if not task.exception()
     ]
     success_count = len(successful_tasks)
 
-    downloaded_bytes = sum(task.result() for task in successful_tasks)
+    downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
 
     logging.info(f'Downloaded {success_count}/{download_count} tracks')
     logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
