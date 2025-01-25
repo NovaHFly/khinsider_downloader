@@ -3,7 +3,10 @@ import logging
 import re
 from concurrent.futures import Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
+from types import TracebackType
+from typing import Callable, ParamSpec, Type, TypeVar
 from urllib.parse import unquote
 
 import httpx
@@ -27,6 +30,13 @@ KHINSIDER_BASE_URL = 'https://downloads.khinsider.com'
 DOWNLOADS_PATH = Path('downloads')
 
 THREAD_COUNT = 6
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+Decorator = Callable[[Callable[P, T]], Callable[P, T]]
+ExceptionGroup = tuple[Exception, ...]
+
 
 @dataclass
 class AudioTrack:
@@ -57,6 +67,50 @@ def construct_argparser() -> argparse.ArgumentParser:
     parser.add_argument('--threads', '-t', type=int, default=THREAD_COUNT)
 
     return parser
+
+
+def log_errors(
+    func: Callable[P, T] = None,
+    *,
+    expected_exceptions: ExceptionGroup = (Exception,),
+) -> Callable[P, T] | Decorator:
+    """A decorator to log exceptions.
+
+    If the decorated function raises an exception,
+    it will be logged and re-raised.
+    Decorator can be used with or without arguments.
+
+    Args:
+        func (Callable[P, T], optional): The function to decorate.
+            Defaults to None.
+        expected_exceptions (ExceptionGroup, optional): The exceptions to log.
+            Defaults to Exception.
+
+    Returns:
+        Callable[P, T] | Decorator:
+        The decorated function or the decorator.
+    """
+
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except expected_exceptions as e:
+                logging.error(e)
+                raise
+
+        return wrapper
+
+    if func:
+        return decorator(func)
+
+    return decorator
+
+
+httpx.request = retry(stop=stop_after_attempt(5))(
+    log_errors(expected_exceptions=httpx.HTTPError)(httpx.request)
+)
 
 
 @retry(stop=stop_after_attempt(5))
