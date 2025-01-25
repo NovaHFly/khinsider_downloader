@@ -1,7 +1,12 @@
 import argparse
 import logging
 import re
-from concurrent.futures import Future, ThreadPoolExecutor, wait
+from concurrent.futures import (
+    as_completed,
+    Future,
+    ThreadPoolExecutor,
+    wait,
+)
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
@@ -247,38 +252,40 @@ def main() -> None:
     parser = construct_argparser()
     args = parser.parse_args()
 
-    links_from_file = (
+    urls_from_file = (
         args.URLS if args.URLS else Path(args.file).read_text().splitlines()
     )
-    album_links = []
-    track_links = []
+    album_urls = []
+    track_urls = []
 
-    for link in links_from_file:
-        if not (match := re.match(KHINSIDER_URL_REGEX, link)):
-            logging.error(f'Invalid khinsider link: {link}')
+    for url in urls_from_file:
+        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
+            logging.error(f'Invalid khinsider url: {url}')
             continue
 
         if match[2]:
-            track_links.append(link)
+            track_urls.append(url)
             continue
 
-        album_links.append(link)
+        album_urls.append(url)
 
     with KhinsiderDownloader(thread_limit=args.threads) as downloader:
+        download_tasks = [
+            downloader.submit_task(downloader.download_track, url)
+            for url in track_urls
+        ]
+
         album_scrape_tasks = [
             downloader.submit_task(
-                downloader.scrape_track_urls_from_album, link
+                downloader.scrape_track_urls_from_album, url
             )
-            for link in album_links
+            for url in album_urls
         ]
-        wait(album_scrape_tasks)
-        for scrape_task in album_scrape_tasks:
-            track_links.extend(scrape_task.result())
-
-        download_tasks = [
-            downloader.submit_task(downloader.download_track, link)
-            for link in track_links
-        ]
+        for scrape_task in as_completed(album_scrape_tasks):
+            download_tasks.extend(
+                downloader.submit_task(downloader.download_track, url)
+                for url in scrape_task.result()
+            )
 
     download_count = len(download_tasks)
     successful_tasks = [
