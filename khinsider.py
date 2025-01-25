@@ -113,17 +113,8 @@ httpx.request = retry(stop=stop_after_attempt(5))(
 )
 
 
-@retry(stop=stop_after_attempt(5))
-def get_http(url: str) -> httpx.Response:
-    try:
-        return httpx.get(url).raise_for_status()
-    except httpx.HTTPError as e:
-        logging.error(e)
-        raise
-
-
 def scrape_album_track_urls(url: str) -> list[str]:
-    response = get_http(url)
+    response = httpx.request('GET', url)
 
     soup = bs(response.text, 'lxml')
     songlist_rows = soup.select_one('#songlist').select('tr')
@@ -153,7 +144,7 @@ class KhinsiderDownloader:
         track_filename = unquote(unquote(match[2]))
         logging.info(f'Downloading track {track_filename} from {album_slug}')
 
-        response = get_http(url)
+        response = httpx.request('GET', url)
 
         soup = bs(response.text, 'lxml')
         audio_url = soup.select_one('audio')['src']
