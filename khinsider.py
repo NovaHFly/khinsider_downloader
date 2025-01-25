@@ -122,11 +122,6 @@ def get_http(url: str) -> httpx.Response:
         raise
 
 
-def read_links_from_file(file_path: str) -> list:
-    with open(file_path, 'r') as f:
-        return [line.strip() for line in f.readlines()]
-
-
 def scrape_album_track_urls(url: str) -> list[str]:
     response = get_http(url)
 
@@ -195,7 +190,7 @@ def main() -> None:
     args = parser.parse_args()
 
     links_from_file = (
-        args.URLS if args.URLS else read_links_from_file(args.file)
+        args.URLS if args.URLS else Path(args.file).read_text().splitlines()
     )
     track_links = []
 
