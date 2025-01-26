@@ -4,6 +4,7 @@ import re
 import time
 from concurrent.futures import (
     as_completed,
+    Future,
     ThreadPoolExecutor,
 )
 from dataclasses import dataclass
@@ -221,17 +222,21 @@ def scrape_track_urls_from_album(url: str) -> list[str]:
     ]
 
 
-def main() -> None:
-    parser = construct_argparser()
-    args = parser.parse_args()
+def separate_album_and_track_urls(
+    urls: list[str],
+) -> tuple[list[str], list[str]]:
+    """Separate album and track urls.
 
-    urls_from_file = (
-        args.URLS if args.URLS else Path(args.file).read_text().splitlines()
-    )
+    Args:
+        urls (list[str]): List of urls.
+
+    Returns:
+        tuple[list[str], list[str]]: Album urls and track urls.
+    """
     album_urls = []
     track_urls = []
 
-    for url in urls_from_file:
+    for url in urls:
         if not (match := re.match(KHINSIDER_URL_REGEX, url)):
             logging.error(f'Invalid khinsider url: {url}')
             continue
@@ -242,7 +247,29 @@ def main() -> None:
 
         album_urls.append(url)
 
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+    return album_urls, track_urls
+
+
+@log_time
+def download_all_tracks_from_urls(
+    urls: list[str],
+    thread_count: int = DEFAULT_THREAD_COUNT,
+) -> list[Future[tuple[AudioTrack, Path]]]:
+    """Download all tracks from khinsider urls.
+
+    If provided url is album url, scrape all track urls from it.
+
+    Args:
+        urls (list[str]): List of khinsider urls.
+        thread_count (int, optional): Number of threads to use.
+            Defaults to DEFAULT_THREAD_COUNT.
+
+    Returns:
+        list[Future[tuple[AudioTrack, Path]]]: List of download tasks.
+    """
+    album_urls, track_urls = separate_album_and_track_urls(urls)
+
+    with ThreadPoolExecutor(max_workers=thread_count) as executor:
         download_tasks = [
             executor.submit(scrape_and_download_track, url)
             for url in track_urls
@@ -258,6 +285,12 @@ def main() -> None:
                 for url in scrape_task.result()
             )
 
+    return download_tasks
+
+
+def summarize_download(
+    download_tasks: list[Future[tuple[AudioTrack, Path]]],
+) -> None:
     download_count = len(download_tasks)
     successful_tasks = [
         task for task in download_tasks if not task.exception()
@@ -270,5 +303,20 @@ def main() -> None:
     logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
 
 
+def main_cli() -> None:
+    args = construct_argparser().parse_args()
+
+    summarize_download(
+        download_all_tracks_from_urls(
+            (
+                args.URLS
+                if args.URLS
+                else Path(args.file).read_text().splitlines()
+            ),
+            thread_count=args.threads,
+        )
+    )
+
+
 if __name__ == '__main__':
-    main()
+    main_cli()
