@@ -160,7 +160,11 @@ def scrape_track_data(url: str, get_size: bool = True) -> AudioTrack:
         else 0
     )
 
-    return AudioTrack(track_filename, album_slug, audio_url, track_size)
+    track = AudioTrack(track_filename, album_slug, audio_url, track_size)
+
+    logging.info(f'Scraped track {track} from {url}')
+
+    return track
 
 
 def download_track_file(track: AudioTrack) -> Path:
@@ -172,8 +176,6 @@ def download_track_file(track: AudioTrack) -> Path:
     Returns:
         Path: Downloaded track file path.
     """
-    logging.info(f'Downloading track {track}...')
-
     response = httpx.request('GET', track.url)
 
     file_path = DOWNLOADS_PATH / track.album_slug / track.filename
@@ -184,6 +186,8 @@ def download_track_file(track: AudioTrack) -> Path:
 
     with file_path.open('wb') as f:
         f.write(response.content)
+
+    logging.info(f'Downloaded track {track} to {file_path}')
 
     return file_path
 
@@ -305,6 +309,11 @@ def summarize_download(
 
 def main_cli() -> None:
     args = construct_argparser().parse_args()
+
+    logging.info('Started cli script')
+    logging.info(f'File: {args.file}')
+    logging.info(f'Urls: {args.URLS}')
+    logging.info(f'Thread count: {args.threads}')
 
     summarize_download(
         download_all_tracks_from_urls(
