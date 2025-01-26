@@ -5,6 +5,7 @@ description = ""
 authors = ["NovaHFly <mugiviska@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+packages = [{ include = "khinsider.py" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
