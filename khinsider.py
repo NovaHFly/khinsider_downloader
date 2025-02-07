@@ -137,6 +137,27 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
+def separate_album_and_track_urls(
+    urls: list[str],
+) -> tuple[list[str], list[str]]:
+    """Separate album and track urls into two lists."""
+    album_urls = []
+    track_urls = []
+
+    for url in urls:
+        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
+            logging.error(f'Invalid khinsider url: {url}')
+            continue
+
+        if match[2]:
+            track_urls.append(url)
+            continue
+
+        album_urls.append(url)
+
+    return album_urls, track_urls
+
+
 @log_errors
 @retry(
     retry=retry_if_exception_type(httpx.HTTPError),
@@ -253,27 +274,6 @@ def get_track_urls_from_album(album_url: str) -> list[str]:
         for row in songlist_rows
         if (anchor := row.select_one('td a'))
     ]
-
-
-def separate_album_and_track_urls(
-    urls: list[str],
-) -> tuple[list[str], list[str]]:
-    """Separate album and track urls into two lists."""
-    album_urls = []
-    track_urls = []
-
-    for url in urls:
-        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
-            logging.error(f'Invalid khinsider url: {url}')
-            continue
-
-        if match[2]:
-            track_urls.append(url)
-            continue
-
-        album_urls.append(url)
-
-    return album_urls, track_urls
 
 
 @log_time
