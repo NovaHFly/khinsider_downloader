@@ -142,197 +142,6 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
     retry=retry_if_exception_type(httpx.HTTPError),
     stop=stop_after_attempt(5),
 )
-def scrape_track_data(url: str, get_size: bool = True) -> AudioTrack:
-    """Scrape track data from url.
-
-    Args:
-        url (str): khinsider track url.
-        get_size (bool, optional): Get track size. Defaults to True.
-
-    Returns:
-        AudioTrack: Track data.
-    """
-    match = re.match(KHINSIDER_URL_REGEX, url)
-
-    if not match:
-        err_msg = f'Invalid track link: {url}'
-        logging.error(err_msg)
-        raise ValueError(err_msg)
-
-    album_slug = match[1]
-    track_filename = unquote(unquote(match[2]))
-
-    response = httpx.get(url)
-
-    soup = bs(response.text, 'lxml')
-    audio_url = soup.select_one('audio')['src']
-
-    track_size = (
-        int(httpx.head(audio_url).headers['content-length']) if get_size else 0
-    )
-
-    track = AudioTrack(track_filename, album_slug, audio_url, track_size)
-
-    logging.info(f'Scraped track {track} from {url}')
-
-    return track
-
-
-@log_errors
-@retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
-    stop=stop_after_attempt(5),
-)
-def download_track_file(track: AudioTrack) -> Path:
-    """Download track file.
-
-    Args:
-        track (AudioTrack): Track data.
-
-    Returns:
-        Path: Downloaded track file path.
-    """
-    response = httpx.get(track.url)
-
-    file_path = DOWNLOADS_PATH / track.album_slug / track.filename
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if not track.size:
-        track.size = int(response.headers['content-length'])
-
-    with file_path.open('wb') as f:
-        f.write(response.content)
-
-    logging.info(f'Downloaded track {track} to {file_path}')
-
-    return file_path
-
-
-def scrape_and_download_track(url: str) -> tuple[AudioTrack, Path]:
-    """Get track data and download it.
-
-    Args:
-        url (str): khinsider track url.
-
-    Returns:
-        tuple[AudioTrack, Path]: Track data and downloaded track file path.
-    """
-    track = scrape_track_data(url, get_size=False)
-    return track, download_track_file(track)
-
-
-@log_errors
-@retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
-    stop=stop_after_attempt(5),
-)
-def scrape_track_urls_from_album(url: str) -> list[str]:
-    """Scrape track urls from album url.
-
-    Args:
-        url (str): khinsider album url.
-
-    Returns:
-        list[str]: List of track urls.
-    """
-    response = httpx.get(url)
-
-    soup = bs(response.text, 'lxml')
-    songlist_rows = soup.select('#songlist tr')
-
-    return [
-        KHINSIDER_BASE_URL + anchor['href']
-        for row in songlist_rows
-        if (anchor := row.select_one('td a'))
-    ]
-
-
-def separate_album_and_track_urls(
-    urls: list[str],
-) -> tuple[list[str], list[str]]:
-    """Separate album and track urls.
-
-    Args:
-        urls (list[str]): List of urls.
-
-    Returns:
-        tuple[list[str], list[str]]: Album urls and track urls.
-    """
-    album_urls = []
-    track_urls = []
-
-    for url in urls:
-        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
-            logging.error(f'Invalid khinsider url: {url}')
-            continue
-
-        if match[2]:
-            track_urls.append(url)
-            continue
-
-        album_urls.append(url)
-
-    return album_urls, track_urls
-
-
-@log_time
-def download_all_tracks_from_urls(
-    urls: list[str],
-    thread_count: int = DEFAULT_THREAD_COUNT,
-) -> list[Future[tuple[AudioTrack, Path]]]:
-    """Download all tracks from khinsider urls.
-
-    If provided url is album url, scrape all track urls from it.
-
-    Args:
-        urls (list[str]): List of khinsider urls.
-        thread_count (int, optional): Number of threads to use.
-            Defaults to DEFAULT_THREAD_COUNT.
-
-    Returns:
-        list[Future[tuple[AudioTrack, Path]]]: List of download tasks.
-    """
-    album_urls, track_urls = separate_album_and_track_urls(urls)
-
-    with ThreadPoolExecutor(max_workers=thread_count) as executor:
-        download_tasks = [
-            executor.submit(scrape_and_download_track, url)
-            for url in track_urls
-        ]
-
-        album_scrape_tasks = [
-            executor.submit(scrape_track_urls_from_album, url)
-            for url in album_urls
-        ]
-        for scrape_task in as_completed(album_scrape_tasks):
-            download_tasks.extend(
-                executor.submit(scrape_and_download_track, url)
-                for url in scrape_task.result()
-            )
-
-    return download_tasks
-
-
-def summarize_download(
-    download_tasks: list[Future[tuple[AudioTrack, Path]]],
-) -> None:
-    download_count = len(download_tasks)
-    successful_tasks = [
-        task for task in download_tasks if not task.exception()
-    ]
-    success_count = len(successful_tasks)
-
-    downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
-
-    logging.info(f'Downloaded {success_count}/{download_count} tracks')
-    logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
-
-
-@log_errors
-@retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
-    stop=stop_after_attempt(5),
-)
 def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
@@ -363,6 +172,155 @@ def get_album_data(album_url: str) -> Album:
     )
 
 
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
+def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
+    """Get track data from url."""
+    match = re.match(KHINSIDER_URL_REGEX, url)
+
+    if not match:
+        err_msg = f'Invalid track link: {url}'
+        logging.error(err_msg)
+        raise ValueError(err_msg)
+
+    album_slug = match[1]
+    track_filename = unquote(unquote(match[2]))
+
+    response = httpx.get(url)
+
+    soup = bs(response.text, 'lxml')
+    audio_url = soup.select_one('audio')['src']
+
+    track_size = (
+        int(httpx.head(audio_url).headers['content-length'])
+        if fetch_size
+        else 0
+    )
+
+    track = AudioTrack(track_filename, album_slug, audio_url, track_size)
+
+    logging.info(f'Scraped track {track} from {url}')
+
+    return track
+
+
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
+def download_track_file(track: AudioTrack) -> Path:
+    """Download track file."""
+    response = httpx.get(track.url)
+
+    file_path = DOWNLOADS_PATH / track.album_slug / track.filename
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if not track.size:
+        track.size = int(response.headers['content-length'])
+
+    with file_path.open('wb') as f:
+        f.write(response.content)
+
+    logging.info(f'Downloaded track {track} to {file_path}')
+
+    return file_path
+
+
+def fetch_and_download_track(url: str) -> tuple[AudioTrack, Path]:
+    """Fetch track data and download it."""
+    track = get_track_data(url, get_size=False)
+    return track, download_track_file(track)
+
+
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
+def get_track_urls_from_album(album_url: str) -> list[str]:
+    """Get track urls from album page."""
+    response = httpx.get(album_url)
+
+    soup = bs(response.text, 'lxml')
+    songlist_rows = soup.select('#songlist tr')
+
+    return [
+        KHINSIDER_BASE_URL + anchor['href']
+        for row in songlist_rows
+        if (anchor := row.select_one('td a'))
+    ]
+
+
+def separate_album_and_track_urls(
+    urls: list[str],
+) -> tuple[list[str], list[str]]:
+    """Separate album and track urls into two lists."""
+    album_urls = []
+    track_urls = []
+
+    for url in urls:
+        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
+            logging.error(f'Invalid khinsider url: {url}')
+            continue
+
+        if match[2]:
+            track_urls.append(url)
+            continue
+
+        album_urls.append(url)
+
+    return album_urls, track_urls
+
+
+@log_time
+def download_tracks(
+    *urls: str,
+    thread_count: int = DEFAULT_THREAD_COUNT,
+) -> list[Future[tuple[AudioTrack, Path]]]:
+    """Download all tracks from khinsider urls.
+
+    If provided url is album url, scrape all track urls from it.
+    """
+    album_urls, track_urls = separate_album_and_track_urls(urls)
+
+    with ThreadPoolExecutor(max_workers=thread_count) as executor:
+        download_tasks = [
+            executor.submit(fetch_and_download_track, url)
+            for url in track_urls
+        ]
+
+        album_scrape_tasks = [
+            executor.submit(get_track_urls_from_album, url)
+            for url in album_urls
+        ]
+        for scrape_task in as_completed(album_scrape_tasks):
+            download_tasks.extend(
+                executor.submit(fetch_and_download_track, url)
+                for url in scrape_task.result()
+            )
+
+    return download_tasks
+
+
+def summarize_download(
+    download_tasks: list[Future[tuple[AudioTrack, Path]]],
+) -> None:
+    download_count = len(download_tasks)
+    successful_tasks = [
+        task for task in download_tasks if not task.exception()
+    ]
+    success_count = len(successful_tasks)
+
+    downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
+
+    logging.info(f'Downloaded {success_count}/{download_count} tracks')
+    logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
+
+
 def main_cli() -> None:
     args = construct_argparser().parse_args()
 
@@ -376,8 +334,8 @@ def main_cli() -> None:
     logging.info(f'Thread count: {args.threads}')
 
     summarize_download(
-        download_all_tracks_from_urls(
-            (
+        download_tracks(
+            *(
                 args.URLS
                 if args.URLS
                 else Path(args.file).read_text().splitlines()
