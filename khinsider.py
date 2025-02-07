@@ -16,7 +16,7 @@ from urllib.parse import unquote
 
 import httpx
 from bs4 import BeautifulSoup as bs
-from tenacity import retry, stop_after_attempt
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 logging.basicConfig(
     level=logging.INFO,
@@ -137,11 +137,11 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
-httpx.request = retry(stop=stop_after_attempt(5))(
-    log_errors(expected_exceptions=httpx.HTTPError)(httpx.request)
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
 )
-
-
 def scrape_track_data(url: str, get_size: bool = True) -> AudioTrack:
     """Scrape track data from url.
 
@@ -162,15 +162,13 @@ def scrape_track_data(url: str, get_size: bool = True) -> AudioTrack:
     album_slug = match[1]
     track_filename = unquote(unquote(match[2]))
 
-    response = httpx.request('GET', url)
+    response = httpx.get(url)
 
     soup = bs(response.text, 'lxml')
     audio_url = soup.select_one('audio')['src']
 
     track_size = (
-        int(httpx.request('HEAD', audio_url).headers['content-length'])
-        if get_size
-        else 0
+        int(httpx.head(audio_url).headers['content-length']) if get_size else 0
     )
 
     track = AudioTrack(track_filename, album_slug, audio_url, track_size)
@@ -180,6 +178,11 @@ def scrape_track_data(url: str, get_size: bool = True) -> AudioTrack:
     return track
 
 
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
 def download_track_file(track: AudioTrack) -> Path:
     """Download track file.
 
@@ -189,7 +192,7 @@ def download_track_file(track: AudioTrack) -> Path:
     Returns:
         Path: Downloaded track file path.
     """
-    response = httpx.request('GET', track.url)
+    response = httpx.get(track.url)
 
     file_path = DOWNLOADS_PATH / track.album_slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -218,6 +221,11 @@ def scrape_and_download_track(url: str) -> tuple[AudioTrack, Path]:
     return track, download_track_file(track)
 
 
+@log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
 def scrape_track_urls_from_album(url: str) -> list[str]:
     """Scrape track urls from album url.
 
@@ -227,7 +235,7 @@ def scrape_track_urls_from_album(url: str) -> list[str]:
     Returns:
         list[str]: List of track urls.
     """
-    response = httpx.request('GET', url)
+    response = httpx.get(url)
 
     soup = bs(response.text, 'lxml')
     songlist_rows = soup.select('#songlist tr')
@@ -321,17 +329,21 @@ def summarize_download(
 
 
 @log_errors
+@retry(
+    retry=retry_if_exception_type(httpx.HTTPError),
+    stop=stop_after_attempt(5),
+)
 def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
         logging.error(err_msg)
         raise ValueError(err_msg)
 
-    album_page_res = httpx.request('GET', album_url)
+    album_page_res = httpx.get(album_url)
     album_page_soup = bs(album_page_res.text, 'lxml')
 
     album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
-    album_info = httpx.request('GET', album_info_url).text
+    album_info = httpx.get(album_info_url).text
 
     return Album(
         name=album_page_soup.select_one('h2').text,
