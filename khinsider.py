@@ -153,7 +153,7 @@ def separate_album_and_track_urls(
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
+    retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
 @log_errors
@@ -163,11 +163,11 @@ def get_album_data(album_url: str) -> Album:
         logger.error(err_msg)
         raise ValueError(err_msg)
 
-    album_page_res = httpx.get(album_url)
+    album_page_res = httpx.get(album_url).raise_for_status()
     album_page_soup = bs(album_page_res.text, 'lxml')
 
     album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
-    album_info = httpx.get(album_info_url).text
+    album_info = httpx.get(album_info_url).raise_for_status().text
 
     return Album(
         name=album_page_soup.select_one('h2').text,
@@ -188,7 +188,7 @@ def get_album_data(album_url: str) -> Album:
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
+    retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
 @log_errors
@@ -204,13 +204,13 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     album_slug = match[1]
     track_filename = unquote(unquote(match[2]))
 
-    response = httpx.get(url)
+    response = httpx.get(url).raise_for_status()
 
     soup = bs(response.text, 'lxml')
     audio_url = soup.select_one('audio')['src']
 
     track_size = (
-        int(httpx.head(audio_url).headers['content-length'])
+        int(httpx.head(audio_url).raise_for_status().headers['content-length'])
         if fetch_size
         else 0
     )
@@ -223,13 +223,13 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
+    retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
 @log_errors
 def download_track_file(track: AudioTrack) -> Path:
     """Download track file."""
-    response = httpx.get(track.url)
+    response = httpx.get(track.url).raise_for_status()
 
     file_path = DOWNLOADS_PATH / track.album_slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -252,13 +252,13 @@ def fetch_and_download_track(url: str) -> tuple[AudioTrack, Path]:
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.HTTPError),
+    retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
 @log_errors
 def get_track_urls_from_album(album_url: str) -> list[str]:
     """Get track urls from album page."""
-    response = httpx.get(album_url)
+    response = httpx.get(album_url).raise_for_status()
 
     soup = bs(response.text, 'lxml')
     songlist_rows = soup.select('#songlist tr')
