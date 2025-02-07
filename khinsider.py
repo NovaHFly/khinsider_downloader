@@ -10,6 +10,7 @@ from concurrent.futures import (
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
+from pprint import pprint
 from typing import Callable, ParamSpec, TypeVar
 from urllib.parse import unquote
 
@@ -30,7 +31,9 @@ KHINSIDER_URL_REGEX = (
     r'game-soundtracks\/album\/([\w-]+)\/?([\w%.-]+)?'
 )
 KHINSIDER_BASE_URL = 'https://downloads.khinsider.com'
-
+ALBUM_INFO_BASE_URL = (
+    'https://vgmtreasurechest.com/soundtracks/{album_slug}/khinsider.info.txt'
+)
 DOWNLOADS_PATH = Path('downloads')
 
 DEFAULT_THREAD_COUNT = 6
@@ -53,6 +56,15 @@ class AudioTrack:
         return f'{self.album_slug} - {self.filename}'
 
 
+@dataclass
+class Album:
+    name: str
+    thumbnail_urls: list[str]
+    year: str
+    type: str
+    track_count: int
+
+
 def construct_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     input_group = parser.add_mutually_exclusive_group(required=True)
@@ -68,6 +80,7 @@ def construct_argparser() -> argparse.ArgumentParser:
         nargs='*',
         default=[],
     )
+    input_group.add_argument('--album', '-a', required=False)
     parser.add_argument(
         '--threads',
         '-t',
@@ -217,7 +230,7 @@ def scrape_track_urls_from_album(url: str) -> list[str]:
     response = httpx.request('GET', url)
 
     soup = bs(response.text, 'lxml')
-    songlist_rows = soup.select_one('#songlist').select('tr')
+    songlist_rows = soup.select('#songlist tr')
 
     return [
         KHINSIDER_BASE_URL + anchor['href']
@@ -307,8 +320,43 @@ def summarize_download(
     logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
 
 
+@log_errors
+def get_album_data(album_url: str) -> Album:
+    if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
+        err_msg = f'Invalid album link: {album_url}'
+        logging.error(err_msg)
+        raise ValueError(err_msg)
+
+    album_page_res = httpx.request('GET', album_url)
+    album_page_soup = bs(album_page_res.text, 'lxml')
+
+    album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
+    album_info = httpx.request('GET', album_info_url).text
+
+    return Album(
+        name=album_page_soup.select_one('h2').text,
+        thumbnail_urls=[
+            img.attrs['src']
+            for img in album_page_soup.select('.albumImage img')
+        ],
+        year=re.search(r'Year: (\d{4})', album_info).group(1),
+        type=album_page_soup.select('p[align=left] a')[-1].text,
+        track_count=len(
+            [
+                tag
+                for tag in album_page_soup.select('#songlist tr')
+                if tag.select('td a')
+            ]
+        ),
+    )
+
+
 def main_cli() -> None:
     args = construct_argparser().parse_args()
+
+    if args.album:
+        pprint(get_album_data(args.album))
+        return
 
     logging.info('Started cli script')
     logging.info(f'File: {args.file}')
