@@ -24,7 +24,7 @@ logging.basicConfig(
     filemode='a',
     format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
 )
-logging.getLogger().addHandler(logging.StreamHandler())
+logger = logging.getLogger('khinsider')
 
 KHINSIDER_URL_REGEX = (
     r'https:\/\/downloads\.khinsider\.com\/'
@@ -110,7 +110,7 @@ def log_errors(
             try:
                 return func(*args, **kwargs)
             except expected_exceptions as e:
-                logging.error(e)
+                logger.error(e)
                 raise
 
         return wrapper
@@ -129,7 +129,7 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
-        logging.info(
+        logger.info(
             f'{func.__name__} took {end_time - start_time:.2f} seconds'
         )
         return result
@@ -146,7 +146,7 @@ def separate_album_and_track_urls(
 
     for url in urls:
         if not (match := re.match(KHINSIDER_URL_REGEX, url)):
-            logging.error(f'Invalid khinsider url: {url}')
+            logger.error(f'Invalid khinsider url: {url}')
             continue
 
         if match[2]:
@@ -166,7 +166,7 @@ def separate_album_and_track_urls(
 def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
-        logging.error(err_msg)
+        logger.error(err_msg)
         raise ValueError(err_msg)
 
     album_page_res = httpx.get(album_url)
@@ -204,7 +204,7 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
 
     if not match:
         err_msg = f'Invalid track link: {url}'
-        logging.error(err_msg)
+        logger.error(err_msg)
         raise ValueError(err_msg)
 
     album_slug = match[1]
@@ -223,7 +223,7 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
 
     track = AudioTrack(track_filename, album_slug, audio_url, track_size)
 
-    logging.info(f'Scraped track {track} from {url}')
+    logger.info(f'Scraped track {track} from {url}')
 
     return track
 
@@ -246,7 +246,7 @@ def download_track_file(track: AudioTrack) -> Path:
     with file_path.open('wb') as f:
         f.write(response.content)
 
-    logging.info(f'Downloaded track {track} to {file_path}')
+    logger.info(f'Downloaded track {track} to {file_path}')
 
     return file_path
 
@@ -317,21 +317,22 @@ def summarize_download(
 
     downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
 
-    logging.info(f'Downloaded {success_count}/{download_count} tracks')
-    logging.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
+    logger.info(f'Downloaded {success_count}/{download_count} tracks')
+    logger.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
 
 
 def main_cli() -> None:
+    logger.addHandler(logging.StreamHandler())
     args = construct_argparser().parse_args()
 
     if args.album:
         pprint(get_album_data(args.album))
         return
 
-    logging.info('Started cli script')
-    logging.info(f'File: {args.file}')
-    logging.info(f'Urls: {args.URLS}')
-    logging.info(f'Thread count: {args.threads}')
+    logger.info('Started cli script')
+    logger.info(f'File: {args.file}')
+    logger.info(f'Urls: {args.URLS}')
+    logger.info(f'Thread count: {args.threads}')
 
     summarize_download(
         download_tracks(
