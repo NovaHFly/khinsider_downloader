@@ -18,12 +18,6 @@ import httpx
 from bs4 import BeautifulSoup as bs
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
-logging.basicConfig(
-    level=logging.INFO,
-    filename='main.log',
-    filemode='a',
-    format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
-)
 logger = logging.getLogger('khinsider')
 
 KHINSIDER_URL_REGEX = (
@@ -322,6 +316,12 @@ def summarize_download(
 
 
 def main_cli() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        filename='main.log',
+        filemode='a',
+        format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
+    )
     logger.addHandler(logging.StreamHandler())
     args = construct_argparser().parse_args()
 
