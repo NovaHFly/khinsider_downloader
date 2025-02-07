@@ -39,6 +39,18 @@ Decorator = Callable[[Callable[P, T]], Callable[P, T]]
 ExceptionGroup = tuple[Exception, ...]
 
 
+class KhinsiderError(Exception):
+    """Base class for khinsider errors."""
+
+
+class InvalidUrl(Exception):
+    """Requested url is invalid."""
+
+
+class ItemDoesNotExist(KhinsiderError):
+    """Requested item does not exist."""
+
+
 @dataclass
 class AudioTrack:
     filename: str
@@ -160,10 +172,12 @@ def separate_album_and_track_urls(
 def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
-        logger.error(err_msg)
-        raise ValueError(err_msg)
+        raise InvalidUrl(err_msg)
 
     album_page_res = httpx.get(album_url).raise_for_status()
+    if 'No such album' in album_page_res.text:
+        raise ItemDoesNotExist(f'Album does not exist: {album_url}')
+
     album_page_soup = bs(album_page_res.text, 'lxml')
 
     album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
@@ -197,15 +211,18 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     match = re.match(KHINSIDER_URL_REGEX, url)
 
     if not match:
-        err_msg = f'Invalid track link: {url}'
-        logger.error(err_msg)
-        raise ValueError(err_msg)
+        err_msg = f'Invalid track url: {url}'
+        raise InvalidUrl(err_msg)
 
     album_slug = match[1]
     track_filename = unquote(unquote(match[2]))
 
-    response = httpx.get(url).raise_for_status()
-
+    try:
+        response = httpx.get(url).raise_for_status()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 404:
+            raise ItemDoesNotExist(f'Track does not exist: {url}')
+        raise
     soup = bs(response.text, 'lxml')
     audio_url = soup.select_one('audio')['src']
 
