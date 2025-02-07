@@ -158,11 +158,11 @@ def separate_album_and_track_urls(
     return album_urls, track_urls
 
 
-@log_errors
 @retry(
     retry=retry_if_exception_type(httpx.HTTPError),
     stop=stop_after_attempt(5),
 )
+@log_errors
 def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
@@ -193,11 +193,11 @@ def get_album_data(album_url: str) -> Album:
     )
 
 
-@log_errors
 @retry(
     retry=retry_if_exception_type(httpx.HTTPError),
     stop=stop_after_attempt(5),
 )
+@log_errors
 def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     """Get track data from url."""
     match = re.match(KHINSIDER_URL_REGEX, url)
@@ -228,11 +228,11 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     return track
 
 
-@log_errors
 @retry(
     retry=retry_if_exception_type(httpx.HTTPError),
     stop=stop_after_attempt(5),
 )
+@log_errors
 def download_track_file(track: AudioTrack) -> Path:
     """Download track file."""
     response = httpx.get(track.url)
@@ -257,11 +257,11 @@ def fetch_and_download_track(url: str) -> tuple[AudioTrack, Path]:
     return track, download_track_file(track)
 
 
-@log_errors
 @retry(
     retry=retry_if_exception_type(httpx.HTTPError),
     stop=stop_after_attempt(5),
 )
+@log_errors
 def get_track_urls_from_album(album_url: str) -> list[str]:
     """Get track urls from album page."""
     response = httpx.get(album_url)
