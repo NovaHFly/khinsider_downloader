@@ -264,7 +264,7 @@ def download_track_file(track: AudioTrack) -> Path:
 
 def fetch_and_download_track(url: str) -> tuple[AudioTrack, Path]:
     """Fetch track data and download it."""
-    track = get_track_data(url, get_size=False)
+    track = get_track_data(url, fetch_size=False)
     return track, download_track_file(track)
 
 
