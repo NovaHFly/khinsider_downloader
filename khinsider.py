@@ -178,26 +178,27 @@ def get_album_data(album_url: str) -> Album:
     if 'No such album' in album_page_res.text:
         raise ItemDoesNotExist(f'Album does not exist: {album_url}')
 
-    album_page_soup = bs(album_page_res.text, 'lxml')
+    soup = bs(album_page_res.text, 'lxml')
 
     album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
     album_info = httpx.get(album_info_url).raise_for_status().text
 
+    songlist_rows = soup.select('#songlist tr')
+
+    track_urls = [
+        KHINSIDER_BASE_URL + anchor['href']
+        for row in songlist_rows
+        if (anchor := row.select_one('td a'))
+    ]
+
     return Album(
-        name=album_page_soup.select_one('h2').text,
+        name=soup.select_one('h2').text,
         thumbnail_urls=[
-            img.attrs['src']
-            for img in album_page_soup.select('.albumImage img')
+            img.attrs['src'] for img in soup.select('.albumImage img')
         ],
         year=re.search(r'Year: (\d{4})', album_info).group(1),
-        type=album_page_soup.select('p[align=left] a')[-1].text,
-        track_count=len(
-            [
-                tag
-                for tag in album_page_soup.select('#songlist tr')
-                if tag.select('td a')
-            ]
-        ),
+        type=soup.select('p[align=left] a')[-1].text,
+        track_count=len(track_urls),
     )
 
 
