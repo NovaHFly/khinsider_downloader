@@ -7,7 +7,7 @@ from concurrent.futures import (
     Future,
     ThreadPoolExecutor,
 )
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
 from pprint import pprint
@@ -49,52 +49,6 @@ class InvalidUrl(Exception):
 
 class ItemDoesNotExist(KhinsiderError):
     """Requested item does not exist."""
-
-
-@dataclass
-class AudioTrack:
-    filename: str
-    album_slug: str
-    url: str
-    size: int = 0
-
-    def __str__(self):
-        return f'{self.album_slug} - {self.filename}'
-
-
-@dataclass
-class Album:
-    name: str
-    thumbnail_urls: list[str]
-    year: str
-    type: str
-    track_count: int
-
-
-def construct_argparser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        '--file',
-        '-f',
-        help='File containing album or track urls',
-        required=False,
-    )
-    input_group.add_argument(
-        'URLS',
-        help='Album or track urls',
-        nargs='*',
-        default=[],
-    )
-    input_group.add_argument('--album', '-a', required=False)
-    parser.add_argument(
-        '--threads',
-        '-t',
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-    )
-
-    return parser
 
 
 def log_errors(
@@ -141,6 +95,67 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
         return result
 
     return wrapper
+
+
+@dataclass
+class AudioTrack:
+    khinsider_page_url: str
+    mp3_url: str | None = None
+    filename: str | None = field(init=False)
+    album_slug: str | None = field(init=False)
+    size: int = 0
+
+    def __str__(self) -> str:
+        return f'{self.album_slug} - {self.filename}'
+
+    @log_errors
+    def __post_init__(self) -> None:
+        if not (
+            match := re.match(
+                KHINSIDER_URL_REGEX,
+                self.khinsider_page_url,
+            )
+        ):
+            raise InvalidUrl(
+                f'Invalid khinsider url: {self.khinsider_page_url}'
+            )
+        self.filename = unquote(unquote(match[2]))
+        self.album_slug = match[1]
+
+
+@dataclass
+class Album:
+    name: str
+    thumbnail_urls: list[str]
+    year: str
+    type: str
+    track_count: int
+
+
+def construct_argparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        '--file',
+        '-f',
+        help='File containing album or track urls',
+        required=False,
+    )
+    input_group.add_argument(
+        'URLS',
+        help='Album or track urls',
+        nargs='*',
+        default=[],
+    )
+    input_group.add_argument('--album', '-a', required=False)
+    parser.add_argument(
+        '--threads',
+        '-t',
+        type=int,
+        default=DEFAULT_THREAD_COUNT,
+    )
+
+    return parser
 
 
 def separate_album_and_track_urls(
@@ -247,7 +262,7 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
 @log_errors
 def download_track_file(track: AudioTrack) -> Path:
     """Download track file."""
-    response = httpx.get(track.url).raise_for_status()
+    response = httpx.get(track.mp3_url).raise_for_status()
 
     file_path = DOWNLOADS_PATH / track.album_slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
