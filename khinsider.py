@@ -51,38 +51,24 @@ class ItemDoesNotExist(KhinsiderError):
     """Requested item does not exist."""
 
 
-def log_errors(
-    func: Callable[P, T] = None,
-    *,
-    expected_exceptions: ExceptionGroup = (Exception,),
-) -> Callable[P, T] | Decorator:
-    """A decorator to log exceptions.
+def log_errors(func: Callable[P, T] = None) -> Callable[P, T]:
+    """Log exceptions raised while calling function."""
 
-    If the decorated function raises one of expected exceptions,
-    it will be logged and re-raised.
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(
+                f'{func.__name__}(args: {args}, kwargs: {kwargs}): {e}'
+            )
+            raise
 
-    Decorator can be used with or without arguments.
-    """
-
-    def decorator(func: Callable[P, T]) -> Callable[P, T]:
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            try:
-                return func(*args, **kwargs)
-            except expected_exceptions as e:
-                logger.error(e)
-                raise
-
-        return wrapper
-
-    if func:
-        return decorator(func)
-
-    return decorator
+    return wrapper
 
 
 def log_time(func: Callable[P, T]) -> Callable[P, T]:
-    """Decorator to log real time elapsed by function."""
+    """Log real time elapsed by function call."""
 
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
