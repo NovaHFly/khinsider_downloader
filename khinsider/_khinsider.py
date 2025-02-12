@@ -1,6 +1,6 @@
 import logging
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import cache, cached_property
@@ -72,25 +72,22 @@ class Album:
         return len(self.tracks)
 
 
-def separate_album_and_track_urls(
-    urls: list[str],
-) -> tuple[list[str], list[str]]:
-    """Separate album and track urls into two lists."""
-    album_urls = []
-    track_urls = []
+def gather_track_urls(urls: list[str]) -> Iterator[str]:
+    """Gather all track urls from khinsider urls.
 
+    If provided url is album url, scrape and yield all track urls
+    from its page.
+    """
     for url in urls:
         if not (match := re.match(KHINSIDER_URL_REGEX, url)):
             logger.error(f'Invalid khinsider url: {url}')
             continue
 
         if match[2]:
-            track_urls.append(url)
+            yield url
             continue
 
-        album_urls.append(url)
-
-    return album_urls, track_urls
+        yield from get_album_data(url).track_urls
 
 
 @cache
@@ -214,19 +211,10 @@ def download_from_urls(
 
     If provided url is album url, download all tracks from it.
     """
-    album_urls, track_urls = separate_album_and_track_urls(urls)
-
     with ThreadPoolExecutor(max_workers=thread_count) as executor:
         download_tasks = [
             executor.submit(fetch_and_download_track, url)
-            for url in track_urls
+            for url in gather_track_urls(urls)
         ]
-
-        for album_url in album_urls:
-            album = get_album_data(album_url, collect_tracks=False)
-            download_tasks.extend(
-                executor.submit(fetch_and_download_track, url)
-                for url in album.track_urls
-            )
 
     return download_tasks
