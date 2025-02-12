@@ -26,11 +26,8 @@ logger = logging.getLogger('khinsider')
 
 @dataclass
 class AudioTrack:
-    name: str = field(init=False)
-    filename: str = field(init=False)
-
     album: 'Album' = field(repr=False)
-    khinsider_page_url: str = field(repr=False)
+    page_url: str = field()
     mp3_url: str | None = field(repr=False, default=None)
 
     size: int = field(repr=False, default=0)
@@ -38,19 +35,9 @@ class AudioTrack:
     def __str__(self) -> str:
         return f'{self.album.slug} - {self.filename}'
 
-    @log_errors
-    def __post_init__(self) -> None:
-        if not (
-            match := re.match(
-                KHINSIDER_URL_REGEX,
-                self.khinsider_page_url,
-            )
-        ):
-            raise InvalidUrl(
-                f'Invalid khinsider url: {self.khinsider_page_url}'
-            )
-        self.filename = unquote(unquote(match[2]))
-        self.name = str(self)
+    @cached_property
+    def filename(self) -> str:
+        return unquote(unquote(self.page_url.rsplit('/')[-1]))
 
 
 @dataclass
@@ -73,7 +60,7 @@ class Album:
         return tuple(
             AudioTrack(
                 album=self,
-                khinsider_page_url=url,
+                page_url=url,
             )
             for url in self.track_urls
         )
@@ -180,7 +167,7 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
 
     track = AudioTrack(
         album=album,
-        khinsider_page_url=url,
+        page_url=url,
         mp3_url=audio_url,
         size=track_size,
     )
