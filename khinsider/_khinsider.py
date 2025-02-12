@@ -1,8 +1,9 @@
 import logging
 import re
+from collections.abc import Sequence
 from concurrent.futures import as_completed, Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from functools import cache
+from functools import cache, cached_property
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -57,33 +58,29 @@ class Album:
     name: str
     slug: str
 
-    thumbnail_urls: list[str]
+    thumbnail_urls: Sequence[str]
 
     year: str
     type: str
-    track_count: int = field(init=False)
 
     track_urls: list[str] = field(
         repr=False,
-        compare=False,
-        hash=False,
-        default_factory=list,
-    )
-    tracks: list[AudioTrack] = field(
-        init=False,
-        repr=False,
         default_factory=list,
     )
 
-    def __post_init__(self) -> None:
-        for track_url in self.track_urls:
-            self.tracks.append(
-                AudioTrack(
-                    album=self,
-                    khinsider_page_url=track_url,
-                )
+    @cached_property
+    def tracks(self) -> tuple[AudioTrack]:
+        return tuple(
+            AudioTrack(
+                album=self,
+                khinsider_page_url=url,
             )
-        self.track_count = len(self.tracks)
+            for url in self.track_urls
+        )
+
+    @property
+    def track_count(self) -> int:
+        return len(self.tracks)
 
 
 def separate_album_and_track_urls(
