@@ -39,7 +39,7 @@ def summarize_download(
     downloads: list[Path | None],
 ) -> None:
     download_count = len(downloads)
-    successful_tasks: list[Path] = list(filter(downloads))
+    successful_tasks: list[Path] = list(filter(None, downloads))
     success_count = len(successful_tasks)
 
     downloaded_bytes = sum(
