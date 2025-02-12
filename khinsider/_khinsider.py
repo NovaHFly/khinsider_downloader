@@ -99,7 +99,7 @@ def separate_album_and_track_urls(
     stop=stop_after_attempt(5),
 )
 @log_errors
-def get_album_data(album_url: str, collect_tracks: bool = True) -> Album:
+def get_album_data(album_url: str) -> Album:
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
         raise InvalidUrl(err_msg)
@@ -113,13 +113,11 @@ def get_album_data(album_url: str, collect_tracks: bool = True) -> Album:
     album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
     album_info = httpx.get(album_info_url).raise_for_status().text
 
-    track_urls = []
-    if collect_tracks:
-        track_urls = [
-            KHINSIDER_BASE_URL + anchor['href']
-            for row in soup.select('#songlist tr')
-            if (anchor := row.select_one('td a'))
-        ]
+    track_urls = [
+        KHINSIDER_BASE_URL + anchor['href']
+        for row in soup.select('#songlist tr')
+        if (anchor := row.select_one('td a'))
+    ]
 
     return Album(
         name=soup.select_one('h2').text,
@@ -162,10 +160,7 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
         else 0
     )
 
-    album = get_album_data(
-        url.rsplit('/', maxsplit=1)[0],
-        collect_tracks=False,
-    )
+    album = get_album_data(url.rsplit('/', maxsplit=1)[0])
 
     track = AudioTrack(
         album=album,
