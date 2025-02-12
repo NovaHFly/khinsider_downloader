@@ -4,7 +4,7 @@ from concurrent.futures import Future
 from pathlib import Path
 from pprint import pprint
 
-from ._khinsider import AudioTrack, download_tracks, get_album_data
+from ._khinsider import download_tracks, get_album_data
 from .constants import DEFAULT_THREAD_COUNT
 
 logger = logging.getLogger('khinsider')
@@ -37,7 +37,7 @@ def construct_argparser() -> argparse.ArgumentParser:
 
 
 def summarize_download(
-    download_tasks: list[Future[tuple[AudioTrack, Path]]],
+    download_tasks: list[Future[Path]],
 ) -> None:
     download_count = len(download_tasks)
     successful_tasks = [
@@ -45,7 +45,9 @@ def summarize_download(
     ]
     success_count = len(successful_tasks)
 
-    downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
+    downloaded_bytes = sum(
+        task.result().stat().st_size for task in successful_tasks
+    )
 
     logger.info(f'Downloaded {success_count}/{download_count} tracks')
     logger.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
