@@ -1,6 +1,5 @@
 import argparse
 import logging
-from concurrent.futures import Future
 from pathlib import Path
 from pprint import pprint
 
@@ -37,16 +36,14 @@ def construct_argparser() -> argparse.ArgumentParser:
 
 
 def summarize_download(
-    download_tasks: list[Future[Path]],
+    downloads: list[Path | None],
 ) -> None:
-    download_count = len(download_tasks)
-    successful_tasks = [
-        task for task in download_tasks if not task.exception()
-    ]
+    download_count = len(downloads)
+    successful_tasks: list[Path] = list(filter(downloads))
     success_count = len(successful_tasks)
 
     downloaded_bytes = sum(
-        task.result().stat().st_size for task in successful_tasks
+        download.stat().st_size for download in successful_tasks
     )
 
     logger.info(f'Downloaded {success_count}/{download_count} tracks')

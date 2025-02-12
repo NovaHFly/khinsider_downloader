@@ -206,7 +206,7 @@ def fetch_and_download_track(url: str) -> Path:
 def download_from_urls(
     *urls: str,
     thread_count: int = DEFAULT_THREAD_COUNT,
-) -> list[DownloadTask]:
+) -> list[Path | None]:
     """Download all tracks from khinsider urls.
 
     If provided url is album url, download all tracks from it.
@@ -217,4 +217,7 @@ def download_from_urls(
             for url in gather_track_urls(urls)
         ]
 
-    return download_tasks
+    return [
+        task.result() if not task.exception() else None
+        for task in download_tasks
+    ]
