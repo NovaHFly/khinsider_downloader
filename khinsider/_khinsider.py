@@ -119,7 +119,7 @@ def get_album_data(album_url: str) -> Album:
         if (anchor := row.select_one('td a'))
     ]
 
-    return Album(
+    album = Album(
         name=soup.select_one('h2').text,
         slug=match[1],
         thumbnail_urls=[
@@ -129,6 +129,8 @@ def get_album_data(album_url: str) -> Album:
         type=soup.select('p[align=left] a')[-1].text,
         track_urls=track_urls,
     )
+    logger.info(f'Scraped album: {album}')
+    return album
 
 
 @retry(
