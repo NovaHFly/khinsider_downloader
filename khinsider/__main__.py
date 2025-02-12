@@ -4,7 +4,7 @@ from concurrent.futures import Future
 from pathlib import Path
 from pprint import pprint
 
-from ._khinsider import download_tracks, get_album_data
+from ._khinsider import download_from_urls, get_album_data
 from .constants import DEFAULT_THREAD_COUNT
 
 logger = logging.getLogger('khinsider')
@@ -73,7 +73,7 @@ def main_cli() -> None:
     logger.info(f'Thread count: {args.threads}')
 
     summarize_download(
-        download_tracks(
+        download_from_urls(
             *(
                 args.URLS
                 if args.URLS

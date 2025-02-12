@@ -1,7 +1,7 @@
 import logging
 import re
 from collections.abc import Sequence
-from concurrent.futures import as_completed, Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
@@ -20,6 +20,8 @@ from .constants import (
 )
 from .decorators import log_errors, log_time
 from .exceptions import InvalidUrl, ItemDoesNotExist
+
+DownloadTask = Future[Path]
 
 logger = logging.getLogger('khinsider')
 
@@ -207,13 +209,13 @@ def fetch_and_download_track(url: str) -> Path:
 
 
 @log_time
-def download_tracks(
+def download_from_urls(
     *urls: str,
     thread_count: int = DEFAULT_THREAD_COUNT,
-) -> list[Future[Path]]:
+) -> list[DownloadTask]:
     """Download all tracks from khinsider urls.
 
-    If provided url is album url, scrape all track urls from it.
+    If provided url is album url, download all tracks from it.
     """
     album_urls, track_urls = separate_album_and_track_urls(urls)
 
@@ -223,17 +225,11 @@ def download_tracks(
             for url in track_urls
         ]
 
-        album_scrape_tasks = [
-            executor.submit(
-                lambda album: album.track_urls,
-                get_album_data(url),
-            )
-            for url in album_urls
-        ]
-        for scrape_task in as_completed(album_scrape_tasks):
+        for album_url in album_urls:
+            album = get_album_data(album_url, collect_tracks=False)
             download_tasks.extend(
                 executor.submit(fetch_and_download_track, url)
-                for url in scrape_task.result()
+                for url in album.track_urls
             )
 
     return download_tasks
