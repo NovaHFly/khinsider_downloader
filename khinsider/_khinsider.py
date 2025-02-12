@@ -1,87 +1,26 @@
-import argparse
 import logging
 import re
-import time
-from concurrent.futures import (
-    as_completed,
-    Future,
-    ThreadPoolExecutor,
-)
+from concurrent.futures import as_completed, Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from functools import cache, wraps
+from functools import cache
 from pathlib import Path
-from pprint import pprint
-from typing import Callable, ParamSpec, TypeVar
 from urllib.parse import unquote
 
 import httpx
 from bs4 import BeautifulSoup as bs
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
+from .constants import (
+    ALBUM_INFO_BASE_URL,
+    DEFAULT_THREAD_COUNT,
+    DOWNLOADS_PATH,
+    KHINSIDER_BASE_URL,
+    KHINSIDER_URL_REGEX,
+)
+from .decorators import log_errors, log_time
+from .exceptions import InvalidUrl, ItemDoesNotExist
+
 logger = logging.getLogger('khinsider')
-
-KHINSIDER_URL_REGEX = (
-    r'https:\/\/downloads\.khinsider\.com\/'
-    r'game-soundtracks\/album\/([\w.-]+)\/?([\w%.-]+)?'
-)
-
-KHINSIDER_BASE_URL = 'https://downloads.khinsider.com'
-ALBUM_INFO_BASE_URL = (
-    'https://vgmtreasurechest.com/soundtracks/{album_slug}/khinsider.info.txt'
-)
-DOWNLOADS_PATH = Path('downloads')
-
-DEFAULT_THREAD_COUNT = 6
-
-P = ParamSpec('P')
-T = TypeVar('T')
-
-Decorator = Callable[[Callable[P, T]], Callable[P, T]]
-ExceptionGroup = tuple[Exception, ...]
-
-
-class KhinsiderError(Exception):
-    """Base class for khinsider errors."""
-
-
-class InvalidUrl(Exception):
-    """Requested url is invalid."""
-
-
-class ItemDoesNotExist(KhinsiderError):
-    """Requested item does not exist."""
-
-
-def log_errors(func: Callable[P, T] = None) -> Callable[P, T]:
-    """Log exceptions raised while calling function."""
-
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(
-                f'{func.__name__}(args: {args}, kwargs: {kwargs}): {e}'
-            )
-            raise
-
-    return wrapper
-
-
-def log_time(func: Callable[P, T]) -> Callable[P, T]:
-    """Log real time elapsed by function call."""
-
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        start_time = time.time()
-        result = func(*args, **kwargs)
-        end_time = time.time()
-        logger.info(
-            f'{func.__name__} took {end_time - start_time:.2f} seconds'
-        )
-        return result
-
-    return wrapper
 
 
 @dataclass
@@ -145,32 +84,6 @@ class Album:
                 )
             )
         self.track_count = len(self.tracks)
-
-
-def construct_argparser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        '--file',
-        '-f',
-        help='File containing album or track urls',
-        required=False,
-    )
-    input_group.add_argument(
-        'URLS',
-        help='Album or track urls',
-        nargs='*',
-        default=[],
-    )
-    input_group.add_argument('--album', '-a', required=False)
-    parser.add_argument(
-        '--threads',
-        '-t',
-        type=int,
-        default=DEFAULT_THREAD_COUNT,
-    )
-
-    return parser
 
 
 def separate_album_and_track_urls(
@@ -356,53 +269,3 @@ def download_tracks(
             )
 
     return download_tasks
-
-
-def summarize_download(
-    download_tasks: list[Future[tuple[AudioTrack, Path]]],
-) -> None:
-    download_count = len(download_tasks)
-    successful_tasks = [
-        task for task in download_tasks if not task.exception()
-    ]
-    success_count = len(successful_tasks)
-
-    downloaded_bytes = sum(task.result()[0].size for task in successful_tasks)
-
-    logger.info(f'Downloaded {success_count}/{download_count} tracks')
-    logger.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
-
-
-def main_cli() -> None:
-    logging.basicConfig(
-        level=logging.INFO,
-        filename='main.log',
-        filemode='a',
-        format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
-    )
-    logger.addHandler(logging.StreamHandler())
-    args = construct_argparser().parse_args()
-
-    if args.album:
-        pprint(get_album_data(args.album))
-        return
-
-    logger.info('Started cli script')
-    logger.info(f'File: {args.file}')
-    logger.info(f'Urls: {args.URLS}')
-    logger.info(f'Thread count: {args.threads}')
-
-    summarize_download(
-        download_tracks(
-            *(
-                args.URLS
-                if args.URLS
-                else Path(args.file).read_text().splitlines()
-            ),
-            thread_count=args.threads,
-        )
-    )
-
-
-if __name__ == '__main__':
-    main_cli()
