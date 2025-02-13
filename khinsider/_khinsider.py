@@ -18,7 +18,7 @@ from .constants import (
     KHINSIDER_BASE_URL,
     KHINSIDER_URL_REGEX,
 )
-from .decorators import log_errors, log_time
+from .decorators import log_errors
 from .exceptions import InvalidUrl, ItemDoesNotExist
 
 DownloadTask = Future[Path]
@@ -202,7 +202,6 @@ def fetch_and_download_track(url: str) -> Path:
     return download_track_file(track)
 
 
-@log_time
 def download_from_urls(
     *urls: str,
     thread_count: int = DEFAULT_THREAD_COUNT,

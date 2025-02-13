@@ -5,6 +5,7 @@ from pprint import pprint
 
 from ._khinsider import download_from_urls, get_album_data
 from .constants import DEFAULT_THREAD_COUNT
+from .decorators import log_time
 
 logger = logging.getLogger('khinsider')
 
@@ -50,6 +51,7 @@ def summarize_download(
     logger.info(f'Download size: {downloaded_bytes / 1024 / 1024:.2f} MB')
 
 
+@log_time
 def main_cli() -> None:
     logging.basicConfig(
         level=logging.INFO,
