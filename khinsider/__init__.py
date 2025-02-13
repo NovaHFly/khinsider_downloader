@@ -3,6 +3,7 @@ from ._khinsider import (
     AudioTrack as AudioTrack,
     download_from_urls as download_from_urls,
     download_track_file as download_track_file,
+    fetch_and_download_track as fetch_and_download_track,
     get_album_data as get_album_data,
     get_track_data as get_track_data,
 )
