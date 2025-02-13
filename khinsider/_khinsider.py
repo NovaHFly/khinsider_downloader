@@ -205,18 +205,18 @@ def fetch_and_download_track(url: str) -> Path:
 def download_from_urls(
     *urls: str,
     thread_count: int = DEFAULT_THREAD_COUNT,
-) -> list[Path | None]:
+) -> Iterator[Path | None]:
     """Download all tracks from khinsider urls.
 
     If provided url is album url, download all tracks from it.
     """
     with ThreadPoolExecutor(max_workers=thread_count) as executor:
-        download_tasks = [
+        download_tasks = tuple(
             executor.submit(fetch_and_download_track, url)
             for url in gather_track_urls(urls)
-        ]
+        )
 
-    return [
-        task.result() if not task.exception() else None
-        for task in download_tasks
-    ]
+        yield from (
+            task.result() if not task.exception() else None
+            for task in download_tasks
+        )

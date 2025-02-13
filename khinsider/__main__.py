@@ -1,5 +1,6 @@
 import argparse
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
@@ -37,7 +38,7 @@ def construct_argparser() -> argparse.ArgumentParser:
 
 
 def summarize_download(
-    downloads: list[Path | None],
+    downloads: Sequence[Path | None],
 ) -> None:
     download_count = len(downloads)
     successful_tasks: list[Path] = list(filter(None, downloads))
@@ -71,16 +72,10 @@ def main_cli() -> None:
     logger.info(f'Urls: {args.URLS}')
     logger.info(f'Thread count: {args.threads}')
 
-    summarize_download(
-        download_from_urls(
-            *(
-                args.URLS
-                if args.URLS
-                else Path(args.file).read_text().splitlines()
-            ),
-            thread_count=args.threads,
-        )
-    )
+    urls = args.URLS or Path(args.file).read_text().splitlines()
+
+    downloads = tuple(download_from_urls(*urls, thread_count=args.threads))
+    summarize_download(downloads)
 
 
 if __name__ == '__main__':
