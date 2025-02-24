@@ -224,7 +224,7 @@ def download_from_urls(
         )
 
 
-async def download(url: str, download_path: Path = None) -> tuple[Path]:
+def download(url: str, download_path: Path = None) -> Iterator[Path]:
     if not (match := re.match(KHINSIDER_URL_REGEX, url)):
         raise InvalidUrl(f'Not a valid khinsider url: {url}')
 
@@ -232,12 +232,15 @@ async def download(url: str, download_path: Path = None) -> tuple[Path]:
     dl_path.mkdir(parents=True, exist_ok=True)
 
     if match[2]:
-        downloaded_tracks = (fetch_and_download_track(url, path=dl_path),)
-    else:
-        album = get_album_data(url)
-        downloaded_tracks = tuple(
-            fetch_and_download_track(track_url, path=dl_path)
-            for track_url in album.track_urls
-        )
+        yield fetch_and_download_track(url, path=dl_path)
+        return
 
-    return downloaded_tracks
+    album = get_album_data(url)
+    with ThreadPoolExecutor(max_workers=DEFAULT_THREAD_COUNT) as executor:
+        download_tasks = [
+            executor.submit(fetch_and_download_track, url, dl_path)
+            for url in album.track_urls
+        ]
+        yield from (
+            task.result() for task in download_tasks if not task.exception()
+        )
