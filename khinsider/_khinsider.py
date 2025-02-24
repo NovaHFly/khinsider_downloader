@@ -178,11 +178,13 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     stop=stop_after_attempt(5),
 )
 @log_errors
-def download_track_file(track: AudioTrack) -> Path:
+def download_track_file(
+    track: AudioTrack, path: Path = DOWNLOADS_PATH
+) -> Path:
     """Download track file."""
     response = httpx.get(track.mp3_url).raise_for_status()
 
-    file_path = DOWNLOADS_PATH / track.album.slug / track.filename
+    file_path = path / track.album.slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not track.size:
@@ -196,10 +198,10 @@ def download_track_file(track: AudioTrack) -> Path:
     return file_path
 
 
-def fetch_and_download_track(url: str) -> Path:
+def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
     """Fetch track data and download it."""
     track = get_track_data(url, fetch_size=False)
-    return download_track_file(track)
+    return download_track_file(track, path)
 
 
 def download_from_urls(
@@ -220,3 +222,20 @@ def download_from_urls(
             task.result() if not task.exception() else None
             for task in download_tasks
         )
+
+
+async def download(url: str, download_id: str) -> Path:
+    if not (match := re.match(KHINSIDER_URL_REGEX, url)):
+        raise InvalidUrl(f'Not a valid khinsider url: {url}')
+
+    dl_path = Path(DOWNLOADS_PATH / download_id).absolute()
+    dl_path.mkdir(parents=True, exist_ok=True)
+
+    if match[2]:
+        fetch_and_download_track(url, path=dl_path)
+    else:
+        album = get_album_data(url)
+        for track_url in album.track_urls:
+            fetch_and_download_track(track_url, path=dl_path)
+
+    return dl_path
