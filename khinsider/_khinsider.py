@@ -224,11 +224,11 @@ def download_from_urls(
         )
 
 
-async def download(url: str, download_id: str) -> Path:
+async def download(url: str, download_path: Path = None) -> Path:
     if not (match := re.match(KHINSIDER_URL_REGEX, url)):
         raise InvalidUrl(f'Not a valid khinsider url: {url}')
 
-    dl_path = Path(DOWNLOADS_PATH / download_id).absolute()
+    dl_path = (download_path or DOWNLOADS_PATH).absolute()
     dl_path.mkdir(parents=True, exist_ok=True)
 
     if match[2]:
