@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup as bs
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import (
+    ALBUM_BASE_URL,
     ALBUM_INFO_BASE_URL,
     DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH,
@@ -70,6 +71,10 @@ class Album:
     @property
     def track_count(self) -> int:
         return len(self.tracks)
+
+    @property
+    def url(self) -> str:
+        return f'{ALBUM_BASE_URL}/{self.slug}'
 
 
 def gather_track_urls(urls: list[str]) -> Iterator[str]:

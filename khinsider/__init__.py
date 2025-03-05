@@ -9,6 +9,7 @@ from ._khinsider import (
     get_track_data as get_track_data,
 )
 from .constants import (
+    ALBUM_BASE_URL as ALBUM_BASE_URL,
     ALBUM_INFO_BASE_URL as ALBUM_INFO_BASE_URL,
     DEFAULT_THREAD_COUNT as DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH as DOWNLOADS_PATH,
