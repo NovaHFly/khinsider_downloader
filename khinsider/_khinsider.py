@@ -77,6 +77,32 @@ class Album:
         return f'{ALBUM_BASE_URL}/{self.slug}'
 
 
+class Downloader(ThreadPoolExecutor):
+    def download(
+        self,
+        url: str,
+        download_path: Path = DOWNLOADS_PATH,
+    ) -> Iterator[Path]:
+        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
+            raise InvalidUrl(f'Not a valid khinsider url: {url}')
+
+        dl_path = (download_path or DOWNLOADS_PATH).absolute()
+        dl_path.mkdir(parents=True, exist_ok=True)
+
+        if match[2]:
+            yield fetch_and_download_track(url, path=dl_path)
+            return
+
+        album = get_album_data(url)
+        download_tasks = [
+            self.submit(fetch_and_download_track, url, dl_path)
+            for url in album.track_urls
+        ]
+        yield from (
+            task.result() for task in download_tasks if not task.exception()
+        )
+
+
 def gather_track_urls(urls: list[str]) -> Iterator[str]:
     """Gather all track urls from khinsider urls.
 
@@ -230,22 +256,5 @@ def download_from_urls(
 
 
 def download(url: str, download_path: Path = None) -> Iterator[Path]:
-    if not (match := re.match(KHINSIDER_URL_REGEX, url)):
-        raise InvalidUrl(f'Not a valid khinsider url: {url}')
-
-    dl_path = (download_path or DOWNLOADS_PATH).absolute()
-    dl_path.mkdir(parents=True, exist_ok=True)
-
-    if match[2]:
-        yield fetch_and_download_track(url, path=dl_path)
-        return
-
-    album = get_album_data(url)
-    with ThreadPoolExecutor(max_workers=DEFAULT_THREAD_COUNT) as executor:
-        download_tasks = [
-            executor.submit(fetch_and_download_track, url, dl_path)
-            for url in album.track_urls
-        ]
-        yield from (
-            task.result() for task in download_tasks if not task.exception()
-        )
+    with Downloader(max_workers=DEFAULT_THREAD_COUNT) as downloader:
+        yield from downloader.download(url, download_path)
