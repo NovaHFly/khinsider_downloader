@@ -2,7 +2,7 @@ from ._khinsider import (
     Album as Album,
     AudioTrack as AudioTrack,
     download as download,
-    download_from_urls as download_from_urls,
+    download_many as download_many,
     download_track_file as download_track_file,
     Downloader as Downloader,
     fetch_and_download_track as fetch_and_download_track,

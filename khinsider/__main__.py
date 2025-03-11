@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
-from ._khinsider import download_from_urls, get_album_data
+from ._khinsider import download_many, get_album_data
 from .constants import DEFAULT_THREAD_COUNT
 from .decorators import log_time
 
@@ -74,7 +74,7 @@ def main_cli() -> None:
 
     urls = args.URLS or Path(args.file).read_text().splitlines()
 
-    downloads = tuple(download_from_urls(*urls, thread_count=args.threads))
+    downloads = tuple(download_many(*urls, thread_count=args.threads))
     summarize_download(downloads)
 
 
