@@ -56,13 +56,9 @@ class Album:
         default_factory=list,
     )
 
-    @cached_property
-    def tracks(self) -> tuple[AudioTrack]:
-        return tuple(get_track_data(url) for url in self.track_urls)
-
     @property
     def track_count(self) -> int:
-        return len(self.tracks)
+        return len(self.track_urls)
 
     @property
     def url(self) -> str:
