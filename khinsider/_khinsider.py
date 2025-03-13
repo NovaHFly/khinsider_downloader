@@ -90,6 +90,13 @@ class Downloader(ThreadPoolExecutor):
             task.result() for task in download_tasks if not task.exception()
         )
 
+    def fetch_audio_urls(
+        self,
+        track_page_urls: Sequence[str],
+    ) -> Iterator[str]:
+        tasks = [self.submit(get_track_data, url) for url in track_page_urls]
+        return (task.result() for task in tasks if not task.exception())
+
 
 def gather_track_urls(urls: list[str]) -> Iterator[str]:
     """Gather all track urls from khinsider urls.
