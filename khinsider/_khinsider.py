@@ -30,10 +30,8 @@ logger = logging.getLogger('khinsider')
 @dataclass
 class AudioTrack:
     album: 'Album' = field(repr=False)
-    page_url: str = field()
-    mp3_url: str | None = field(repr=False, default=None)
-
-    size: int = field(repr=False, default=0)
+    page_url: str
+    mp3_url: str = field(repr=False)
 
     def __str__(self) -> str:
         return f'{self.album.slug} - {self.filename}'
@@ -60,13 +58,7 @@ class Album:
 
     @cached_property
     def tracks(self) -> tuple[AudioTrack]:
-        return tuple(
-            AudioTrack(
-                album=self,
-                page_url=url,
-            )
-            for url in self.track_urls
-        )
+        return tuple(get_track_data(url) for url in self.track_urls)
 
     @property
     def track_count(self) -> int:
@@ -161,16 +153,17 @@ def get_album_data(album_url: str) -> Album:
     return album
 
 
+@cache
 @retry(
     retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
 @log_errors
-def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
+def get_track_data(url: str) -> AudioTrack:
     """Get track data from url."""
     match = re.match(KHINSIDER_URL_REGEX, url)
 
-    if not match:
+    if not match or not match[2]:
         err_msg = f'Invalid track url: {url}'
         raise InvalidUrl(err_msg)
 
@@ -184,22 +177,10 @@ def get_track_data(url: str, fetch_size: bool = True) -> AudioTrack:
     soup = bs(response.text, 'lxml')
     audio_url = soup.select_one('audio')['src']
 
-    track_size = (
-        int(httpx.head(audio_url).raise_for_status().headers['content-length'])
-        if fetch_size
-        else 0
-    )
-
     album = get_album_data(url.rsplit('/', maxsplit=1)[0])
 
-    track = AudioTrack(
-        album=album,
-        page_url=url,
-        mp3_url=audio_url,
-        size=track_size,
-    )
-
-    logger.info(f'Scraped track {track} from {url}')
+    track = AudioTrack(album=album, page_url=url, mp3_url=audio_url)
+    logger.info(track)
 
     return track
 
@@ -231,7 +212,7 @@ def download_track_file(
 
 def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
     """Fetch track data and download it."""
-    track = get_track_data(url, fetch_size=False)
+    track = get_track_data(url)
     return download_track_file(track, path)
 
 
