@@ -88,10 +88,10 @@ class Downloader(ThreadPoolExecutor):
             task.result() for task in download_tasks if not task.exception()
         )
 
-    def fetch_audio_urls(
+    def fetch_tracks(
         self,
         track_page_urls: Sequence[str],
-    ) -> Iterator[str]:
+    ) -> Iterator[AudioTrack]:
         tasks = [self.submit(get_track_data, url) for url in track_page_urls]
         return (task.result() for task in tasks if not task.exception())
 
