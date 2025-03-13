@@ -1,7 +1,7 @@
 import logging
 import re
 from collections.abc import Iterator, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import cache, cached_property
 from pathlib import Path
@@ -21,8 +21,6 @@ from .constants import (
 )
 from .decorators import log_errors
 from .exceptions import InvalidUrl, ItemDoesNotExist
-
-DownloadTask = Future[Path]
 
 logger = logging.getLogger('khinsider')
 
