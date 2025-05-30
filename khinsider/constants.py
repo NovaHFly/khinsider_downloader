@@ -11,5 +11,5 @@ DEFAULT_THREAD_COUNT = 6
 
 KHINSIDER_URL_REGEX = (
     r'https:\/\/downloads\.khinsider\.com\/'
-    r'game-soundtracks\/album\/([\w.-]+)\/?([\w%.-]+)?'
+    r'game-soundtracks\/album\/([\w%.-]+)\/?([\w%.-]+)?'
 )
