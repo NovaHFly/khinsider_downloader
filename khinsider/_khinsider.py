@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 import httpx
-from bs4 import BeautifulSoup as bs
+from bs4 import BeautifulSoup as bs, Tag
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import (
@@ -121,6 +121,16 @@ def gather_track_urls(urls: list[str]) -> Iterator[str]:
 )
 @log_errors
 def get_album_data(album_url: str) -> Album:
+    def parse_album_year(album_info_txt: str) -> str:
+        if match := re.search(r'Year: (\d{4})', album_info):
+            return match[1]
+        return None
+
+    def parse_album_type(album_info_tag: Tag) -> str:
+        if type_tag := album_info_tag.select_one('p[align=left] b a'):
+            return type_tag.text
+        return None
+
     if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
         err_msg = f'Invalid album link: {album_url}'
         raise InvalidUrl(err_msg)
@@ -146,8 +156,8 @@ def get_album_data(album_url: str) -> Album:
         thumbnail_urls=[
             img.attrs['src'] for img in soup.select('.albumImage img')
         ],
-        year=re.search(r'Year: (\d{4})', album_info).group(1),
-        type=soup.select('p[align=left] a')[-1].text,
+        year=parse_album_year(album_info),
+        type=parse_album_type(soup.select_one('p[align=left]')),
         track_urls=track_urls,
     )
     logger.info(f'Scraped album: {album}')
