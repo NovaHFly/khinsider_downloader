@@ -42,3 +42,12 @@ class Album:
     @property
     def url(self) -> str:
         return f'{ALBUM_BASE_URL}/{self.slug}'
+
+
+@dataclass
+class AlbumSearchResult:
+    name: str
+    type: str
+    year: str
+
+    slug: str

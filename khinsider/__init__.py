@@ -9,7 +9,6 @@ from ._khinsider import (
 )
 from .constants import (
     ALBUM_BASE_URL as ALBUM_BASE_URL,
-    ALBUM_INFO_BASE_URL as ALBUM_INFO_BASE_URL,
     DEFAULT_THREAD_COUNT as DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH as DOWNLOADS_PATH,
     KHINSIDER_BASE_URL as KHINSIDER_BASE_URL,
@@ -17,8 +16,8 @@ from .constants import (
 )
 from .exceptions import (
     InvalidUrl as InvalidUrl,
-    ItemDoesNotExist as ItemDoesNotExist,
     KhinsiderError as KhinsiderError,
+    ObjectDoesNotExist as ObjectDoesNotExist,
 )
 from .models import (
     Album as Album,
