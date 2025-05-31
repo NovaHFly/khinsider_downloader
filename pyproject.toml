@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ['khinsider']
+include = ['khinsider']
 
 [build-system]
 requires = ["hatchling"]
