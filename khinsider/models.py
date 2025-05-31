@@ -50,4 +50,4 @@ class AlbumSearchResult:
     type: str
     year: str
 
-    slug: str
+    url: str
