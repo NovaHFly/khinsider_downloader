@@ -61,6 +61,8 @@ def main_cli() -> None:
         format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
     )
     logger.addHandler(logging.StreamHandler())
+    logging.getLogger('khinsider_api').addHandler(logging.StreamHandler())
+
     args = construct_argparser().parse_args()
 
     if args.album:
