@@ -24,7 +24,7 @@ def parse_album_page(html_text: str) -> dict[str, Any]:
             else None
         ),
         'type': (
-            tag.text if (tag := soup.select_one('p[align=left] a b')) else None
+            tag.text if (tag := soup.select_one('p[align=left] b a')) else None
         ),
         'track_urls': [
             KHINSIDER_BASE_URL + anchor['href']
