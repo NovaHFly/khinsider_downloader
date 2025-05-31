@@ -1,13 +1,11 @@
 from ._khinsider import (
-    Album as Album,
-    AudioTrack as AudioTrack,
     download as download,
     download_many as download_many,
     download_track_file as download_track_file,
     Downloader as Downloader,
     fetch_and_download_track as fetch_and_download_track,
-    get_album_data as get_album_data,
-    get_track_data as get_track_data,
+    get_album as get_album,
+    get_track as get_track,
 )
 from .constants import (
     ALBUM_BASE_URL as ALBUM_BASE_URL,
@@ -21,4 +19,8 @@ from .exceptions import (
     InvalidUrl as InvalidUrl,
     ItemDoesNotExist as ItemDoesNotExist,
     KhinsiderError as KhinsiderError,
+)
+from .models import (
+    Album as Album,
+    AudioTrack as AudioTrack,
 )

@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
-from ._khinsider import download_many, get_album_data
+from ._khinsider import download_many, get_album
 from .constants import DEFAULT_THREAD_COUNT
 from .decorators import log_time
 
@@ -64,7 +64,7 @@ def main_cli() -> None:
     args = construct_argparser().parse_args()
 
     if args.album:
-        pprint(get_album_data(args.album))
+        pprint(get_album(args.album))
         return
 
     logger.info('Started cli script')

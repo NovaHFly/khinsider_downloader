@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
-from .api import get_album_data, get_track_data
+from .api import get_album, get_track
 from .constants import (
     DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH,
@@ -36,7 +36,7 @@ class Downloader(ThreadPoolExecutor):
             yield fetch_and_download_track(url, path=dl_path)
             return
 
-        album = get_album_data(url)
+        album = get_album(url)
         download_tasks = [
             self.submit(fetch_and_download_track, url, dl_path)
             for url in album.track_urls
@@ -49,7 +49,7 @@ class Downloader(ThreadPoolExecutor):
         self,
         track_page_urls: Sequence[str],
     ) -> Iterator[AudioTrack]:
-        tasks = [self.submit(get_track_data, url) for url in track_page_urls]
+        tasks = [self.submit(get_track, url) for url in track_page_urls]
         return (task.result() for task in tasks if not task.exception())
 
 
@@ -68,7 +68,7 @@ def gather_track_urls(urls: list[str]) -> Iterator[str]:
             yield url
             continue
 
-        yield from get_album_data(url).track_urls
+        yield from get_album(url).track_urls
 
 
 @retry(
@@ -95,7 +95,7 @@ def download_track_file(
 
 def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
     """Fetch track data and download it."""
-    track = get_track_data(url)
+    track = get_track(url)
     return download_track_file(track, path)
 
 

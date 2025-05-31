@@ -1,21 +1,65 @@
-import re
+from collections.abc import Callable
 from functools import cache
 from logging import getLogger
 
 import httpx
-from bs4 import BeautifulSoup as bs, Tag
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import (
-    ALBUM_INFO_BASE_URL,
     KHINSIDER_BASE_URL,
-    KHINSIDER_URL_REGEX,
 )
 from .decorators import log_errors
 from .exceptions import InvalidUrl, ItemDoesNotExist
 from .models import Album, AudioTrack
+from .parser import parse_album_page, parse_track_page
 
 logger = getLogger('khinsider_api')
+
+KHINSIDER_OBJECT_BASE_URL = f'{KHINSIDER_BASE_URL}/game-soundtracks'
+
+# TODO: All validators must return same exception type
+
+
+def url_is_khinsider_object(response: httpx.Response) -> None:
+    url = str(response.url)
+    if not url.startswith(KHINSIDER_OBJECT_BASE_URL):
+        raise InvalidUrl(f'Invalid khinsider object url: {url}!')
+
+
+def khinsider_object_exists(response: httpx.Response) -> None:
+    url = str(response.url)
+    if 'Ooops!' in response.text:
+        object_url = url.removeprefix(KHINSIDER_OBJECT_BASE_URL)
+        raise ItemDoesNotExist(
+            f'Requested object does not exist: {object_url}!'
+        )
+
+
+def url_is_khinsider_album(response: httpx.Response) -> None:
+    url = response.url
+    if len(url.raw_path.split(b'/')) != 4:
+        raise InvalidUrl('Url does not lead to khinsider album page!')
+
+
+def url_is_khinsider_track(response: httpx.Response) -> None:
+    url = response.url
+    if len(url.raw_path.split(b'/')) != 5:
+        raise InvalidUrl('Url does not lead to khinsider track page!')
+
+
+@log_errors(logger=logger)
+def get_object_response(
+    url: str, validators: list[Callable[[httpx.Response], None]] = None
+) -> httpx.Response:
+    if not validators:
+        validators = []
+
+    res = httpx.get(url)
+
+    for validator in validators:
+        validator(res)
+
+    return res
 
 
 @retry(
@@ -23,48 +67,24 @@ logger = getLogger('khinsider_api')
     stop=stop_after_attempt(5),
 )
 @cache
-@log_errors
-def get_album_data(album_url: str) -> Album:
-    def parse_album_year(album_info_txt: str) -> str:
-        if match := re.search(r'Year: (\d{4})', album_info_txt):
-            return match[1]
-        return None
-
-    def parse_album_type(album_info_tag: Tag) -> str:
-        if type_tag := album_info_tag.select_one('p[align=left] b a'):
-            return type_tag.text
-        return None
-
-    if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
-        err_msg = f'Invalid album link: {album_url}'
-        raise InvalidUrl(err_msg)
-
-    album_page_res = httpx.get(album_url).raise_for_status()
-    if 'No such album' in album_page_res.text:
-        raise ItemDoesNotExist(f'Album does not exist: {album_url}')
-
-    soup = bs(album_page_res.text, 'lxml')
-
-    album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
-    album_info = httpx.get(album_info_url).raise_for_status().text
-
-    track_urls = [
-        KHINSIDER_BASE_URL + anchor['href']
-        for row in soup.select('#songlist tr')
-        if (anchor := row.select_one('td a'))
-    ]
-
-    album = Album(
-        name=soup.select_one('h2').text,
-        slug=match[1],
-        thumbnail_urls=[
-            img.attrs['src'] for img in soup.select('.albumImage img')
+@log_errors(logger=logger)
+def get_album(album_url: str) -> Album:
+    album_page_res = get_object_response(
+        album_url,
+        validators=[
+            url_is_khinsider_object,
+            khinsider_object_exists,
+            url_is_khinsider_album,
         ],
-        year=parse_album_year(album_info),
-        type=parse_album_type(soup.select_one('p[align=left]')),
-        track_urls=track_urls,
     )
-    logger.info(f'Scraped album: {album}')
+
+    album_slug = album_url.rsplit('/', maxsplit=1)[-1]
+
+    album_data = parse_album_page(album_page_res.text)
+    album_data |= {'slug': album_slug}
+
+    album = Album(**album_data)
+    logger.info(album)
     return album
 
 
@@ -74,27 +94,25 @@ def get_album_data(album_url: str) -> Album:
 )
 @cache
 @log_errors
-def get_track_data(url: str) -> AudioTrack:
+def get_track(track_url: str) -> AudioTrack:
     """Get track data from url."""
-    match = re.match(KHINSIDER_URL_REGEX, url)
+    track_response = get_object_response(
+        track_url,
+        validators=[
+            url_is_khinsider_object,
+            khinsider_object_exists,
+            url_is_khinsider_track,
+        ],
+    )
+    album = get_album(track_url.rsplit('/', maxsplit=1)[0])
 
-    if not match or not match[2]:
-        err_msg = f'Invalid track url: {url}'
-        raise InvalidUrl(err_msg)
+    track_data = parse_track_page(track_response.text)
+    track_data |= {
+        'page_url': track_url,
+        'album': album,
+    }
 
-    try:
-        response = httpx.get(url).raise_for_status()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise ItemDoesNotExist(f'Track does not exist: {url}')
-        raise
-
-    soup = bs(response.text, 'lxml')
-    audio_url = soup.select_one('audio')['src']
-
-    album = get_album_data(url.rsplit('/', maxsplit=1)[0])
-
-    track = AudioTrack(album=album, page_url=url, mp3_url=audio_url)
+    track = AudioTrack(**track_data)
     logger.info(track)
 
     return track
