@@ -2,11 +2,18 @@ from functools import cache
 from logging import getLogger
 
 import httpx
+from bs4 import BeautifulSoup
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
+from .constants import KHINSIDER_BASE_URL
 from .decorators import log_errors
-from .models import Album, AudioTrack
-from .parser import parse_album_page, parse_track_page
+from .models import Album, AlbumSearchResult, AudioTrack
+from .parser import (
+    parse_album_page,
+    parse_album_search_result,
+    parse_track_page,
+)
+from .search import QueryBuilder
 from .validators import (
     khinsider_object_exists,
     url_is_khinsider_album,
@@ -63,3 +70,27 @@ def get_track(url: str) -> AudioTrack:
     logger.info(track)
 
     return track
+
+
+@retry(
+    retry=retry_if_exception_type(httpx.RequestError),
+    stop=stop_after_attempt(5),
+)
+@log_errors
+def search_albums(query: str) -> list[AlbumSearchResult]:
+    full_query = QueryBuilder().search_for(query).build()
+
+    url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
+    res = httpx.get(url)
+
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    if not (result_tags := soup.select('table.albumList tr')):
+        return []
+
+    result_tags = result_tags[1:]
+
+    return [
+        AlbumSearchResult(**parse_album_search_result(tag))
+        for tag in result_tags
+    ]
