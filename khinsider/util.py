@@ -1,5 +1,5 @@
 from functools import partial
-from urllib import quote
+from urllib.parse import quote
 
 
 def normalize_query(query: str) -> str:
