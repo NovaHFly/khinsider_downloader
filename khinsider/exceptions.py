@@ -6,5 +6,5 @@ class InvalidUrl(Exception):
     """Requested url is invalid."""
 
 
-class ItemDoesNotExist(KhinsiderError):
-    """Requested item does not exist."""
+class ObjectDoesNotExist(KhinsiderError):
+    """Requested object does not exist."""

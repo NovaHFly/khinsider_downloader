@@ -2,65 +2,22 @@ import logging
 import re
 from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
-from functools import cache, cached_property
 from pathlib import Path
-from urllib.parse import unquote
 
 import httpx
-from bs4 import BeautifulSoup as bs, Tag
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
+from .api import get_album, get_track
 from .constants import (
-    ALBUM_BASE_URL,
-    ALBUM_INFO_BASE_URL,
     DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH,
-    KHINSIDER_BASE_URL,
     KHINSIDER_URL_REGEX,
 )
 from .decorators import log_errors
-from .exceptions import InvalidUrl, ItemDoesNotExist
+from .exceptions import InvalidUrl
+from .models import AudioTrack
 
 logger = logging.getLogger('khinsider')
-
-
-@dataclass
-class AudioTrack:
-    album: 'Album' = field(repr=False)
-    page_url: str
-    mp3_url: str = field(repr=False)
-
-    def __str__(self) -> str:
-        return f'{self.album.slug} - {self.filename}'
-
-    @cached_property
-    def filename(self) -> str:
-        return unquote(unquote(self.page_url.rsplit('/')[-1]))
-
-
-@dataclass
-class Album:
-    name: str
-    slug: str
-
-    thumbnail_urls: Sequence[str]
-
-    year: str
-    type: str
-
-    track_urls: list[str] = field(
-        repr=False,
-        default_factory=list,
-    )
-
-    @property
-    def track_count(self) -> int:
-        return len(self.track_urls)
-
-    @property
-    def url(self) -> str:
-        return f'{ALBUM_BASE_URL}/{self.slug}'
 
 
 class Downloader(ThreadPoolExecutor):
@@ -79,7 +36,7 @@ class Downloader(ThreadPoolExecutor):
             yield fetch_and_download_track(url, path=dl_path)
             return
 
-        album = get_album_data(url)
+        album = get_album(url)
         download_tasks = [
             self.submit(fetch_and_download_track, url, dl_path)
             for url in album.track_urls
@@ -92,7 +49,7 @@ class Downloader(ThreadPoolExecutor):
         self,
         track_page_urls: Sequence[str],
     ) -> Iterator[AudioTrack]:
-        tasks = [self.submit(get_track_data, url) for url in track_page_urls]
+        tasks = [self.submit(get_track, url) for url in track_page_urls]
         return (task.result() for task in tasks if not task.exception())
 
 
@@ -111,89 +68,7 @@ def gather_track_urls(urls: list[str]) -> Iterator[str]:
             yield url
             continue
 
-        yield from get_album_data(url).track_urls
-
-
-@cache
-@retry(
-    retry=retry_if_exception_type(httpx.RequestError),
-    stop=stop_after_attempt(5),
-)
-@log_errors
-def get_album_data(album_url: str) -> Album:
-    def parse_album_year(album_info_txt: str) -> str:
-        if match := re.search(r'Year: (\d{4})', album_info):
-            return match[1]
-        return None
-
-    def parse_album_type(album_info_tag: Tag) -> str:
-        if type_tag := album_info_tag.select_one('p[align=left] b a'):
-            return type_tag.text
-        return None
-
-    if not (match := re.match(KHINSIDER_URL_REGEX, album_url)):
-        err_msg = f'Invalid album link: {album_url}'
-        raise InvalidUrl(err_msg)
-
-    album_page_res = httpx.get(album_url).raise_for_status()
-    if 'No such album' in album_page_res.text:
-        raise ItemDoesNotExist(f'Album does not exist: {album_url}')
-
-    soup = bs(album_page_res.text, 'lxml')
-
-    album_info_url = ALBUM_INFO_BASE_URL.format(album_slug=match[1])
-    album_info = httpx.get(album_info_url).raise_for_status().text
-
-    track_urls = [
-        KHINSIDER_BASE_URL + anchor['href']
-        for row in soup.select('#songlist tr')
-        if (anchor := row.select_one('td a'))
-    ]
-
-    album = Album(
-        name=soup.select_one('h2').text,
-        slug=match[1],
-        thumbnail_urls=[
-            img.attrs['src'] for img in soup.select('.albumImage img')
-        ],
-        year=parse_album_year(album_info),
-        type=parse_album_type(soup.select_one('p[align=left]')),
-        track_urls=track_urls,
-    )
-    logger.info(f'Scraped album: {album}')
-    return album
-
-
-@cache
-@retry(
-    retry=retry_if_exception_type(httpx.RequestError),
-    stop=stop_after_attempt(5),
-)
-@log_errors
-def get_track_data(url: str) -> AudioTrack:
-    """Get track data from url."""
-    match = re.match(KHINSIDER_URL_REGEX, url)
-
-    if not match or not match[2]:
-        err_msg = f'Invalid track url: {url}'
-        raise InvalidUrl(err_msg)
-
-    try:
-        response = httpx.get(url).raise_for_status()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 404:
-            raise ItemDoesNotExist(f'Track does not exist: {url}')
-        raise
-
-    soup = bs(response.text, 'lxml')
-    audio_url = soup.select_one('audio')['src']
-
-    album = get_album_data(url.rsplit('/', maxsplit=1)[0])
-
-    track = AudioTrack(album=album, page_url=url, mp3_url=audio_url)
-    logger.info(track)
-
-    return track
+        yield from get_album(url).track_urls
 
 
 @retry(
@@ -210,9 +85,6 @@ def download_track_file(
     file_path = path / track.album.slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not track.size:
-        track.size = int(response.headers['content-length'])
-
     with file_path.open('wb') as f:
         f.write(response.content)
 
@@ -223,7 +95,7 @@ def download_track_file(
 
 def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
     """Fetch track data and download it."""
-    track = get_track_data(url)
+    track = get_track(url)
     return download_track_file(track, path)
 
 

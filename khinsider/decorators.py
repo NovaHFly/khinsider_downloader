@@ -9,23 +9,34 @@ T = TypeVar('T')
 Decorator = Callable[[Callable[P, T]], Callable[P, T]]
 ExceptionGroup = tuple[Exception, ...]
 
-logger = logging.getLogger('khinsider')
+global_logger = logging.getLogger('khinsider')
 
 
-def log_errors(func: Callable[P, T] = None) -> Callable[P, T]:
+def log_errors(
+    func: Callable[P, T] = None,
+    *,
+    logger: logging.Logger = None,
+) -> Callable[[Callable[P, T]], Callable[P, T]] | Callable[P, T]:
     """Log exceptions raised while calling function."""
+    local_logger = logger or global_logger
 
-    @wraps(func)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            logger.error(
-                f'{func.__name__}(args: {args}, kwargs: {kwargs}): {e}'
-            )
-            raise
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                local_logger.error(
+                    f'{func.__name__}(args: {args}, kwargs: {kwargs}): {e}'
+                )
+                raise
 
-    return wrapper
+        return wrapper
+
+    if func:
+        return decorator(func)
+
+    return decorator
 
 
 def log_time(func: Callable[P, T]) -> Callable[P, T]:
@@ -36,7 +47,7 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
         start_time = time.time()
         result = func(*args, **kwargs)
         end_time = time.time()
-        logger.info(
+        global_logger.info(
             f'{func.__name__} took {end_time - start_time:.2f} seconds'
         )
         return result
