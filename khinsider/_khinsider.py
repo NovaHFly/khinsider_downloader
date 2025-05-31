@@ -85,9 +85,6 @@ def download_track_file(
     file_path = path / track.album.slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not track.size:
-        track.size = int(response.headers['content-length'])
-
     with file_path.open('wb') as f:
         f.write(response.content)
 
