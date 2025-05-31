@@ -1,6 +1,5 @@
-from functools import cache, partial
+from functools import cache
 from logging import getLogger
-from urllib.parse import quote
 
 import httpx
 from bs4 import BeautifulSoup
@@ -14,6 +13,7 @@ from .parser import (
     parse_album_search_result,
     parse_track_page,
 )
+from .search import QueryBuilder
 from .validators import (
     khinsider_object_exists,
     url_is_khinsider_album,
@@ -79,13 +79,9 @@ def get_track(url: str) -> AudioTrack:
 @cache
 @log_errors
 def search_albums(query: str) -> list[AlbumSearchResult]:
-    def normalize_query(query: str) -> str:
-        full_quote = partial(quote, safe='')
-        return '+'.join(map(full_quote, query.split()))
+    full_query = QueryBuilder().search_for(query).build()
 
-    query = normalize_query(query)
-
-    url = f'{KHINSIDER_BASE_URL}/search?search={query}'
+    url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
     res = httpx.get(url)
 
     soup = BeautifulSoup(res.text, 'lxml')
