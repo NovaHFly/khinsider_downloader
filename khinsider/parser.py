@@ -16,7 +16,7 @@ def parse_album_page(html_text: str) -> dict[str, Any]:
     return {
         'name': soup.select_one('h2').text,
         'thumbnail_urls': [
-            img.attrs['src'] for img in soup.select('.albumImage img')
+            anchor.attrs['href'] for anchor in soup.select('.albumImage a')
         ],
         'year': (
             match[1]
