@@ -76,7 +76,6 @@ def get_track(url: str) -> AudioTrack:
     retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
 )
-@cache
 @log_errors
 def search_albums(query: str) -> list[AlbumSearchResult]:
     full_query = QueryBuilder().search_for(query).build()
