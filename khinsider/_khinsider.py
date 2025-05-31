@@ -2,17 +2,14 @@ import logging
 import re
 from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
-from functools import cache, cached_property
+from functools import cache
 from pathlib import Path
-from urllib.parse import unquote
 
 import httpx
 from bs4 import BeautifulSoup as bs, Tag
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import (
-    ALBUM_BASE_URL,
     ALBUM_INFO_BASE_URL,
     DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH,
@@ -21,46 +18,9 @@ from .constants import (
 )
 from .decorators import log_errors
 from .exceptions import InvalidUrl, ItemDoesNotExist
+from .models import Album, AudioTrack
 
 logger = logging.getLogger('khinsider')
-
-
-@dataclass
-class AudioTrack:
-    album: 'Album' = field(repr=False)
-    page_url: str
-    mp3_url: str = field(repr=False)
-
-    def __str__(self) -> str:
-        return f'{self.album.slug} - {self.filename}'
-
-    @cached_property
-    def filename(self) -> str:
-        return unquote(unquote(self.page_url.rsplit('/')[-1]))
-
-
-@dataclass
-class Album:
-    name: str
-    slug: str
-
-    thumbnail_urls: Sequence[str]
-
-    year: str
-    type: str
-
-    track_urls: list[str] = field(
-        repr=False,
-        default_factory=list,
-    )
-
-    @property
-    def track_count(self) -> int:
-        return len(self.track_urls)
-
-    @property
-    def url(self) -> str:
-        return f'{ALBUM_BASE_URL}/{self.slug}'
 
 
 class Downloader(ThreadPoolExecutor):
