@@ -4,10 +4,10 @@ from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
-from ._khinsider import download_many
-from .api import get_album, search_albums
-from .constants import DEFAULT_THREAD_COUNT
-from .decorators import log_time
+from khinsider.api import get_album, search_albums
+from khinsider.constants import DEFAULT_THREAD_COUNT
+from khinsider.decorators import log_time
+from khinsider.downloader import download_many
 
 logger = logging.getLogger('khinsider')
 
