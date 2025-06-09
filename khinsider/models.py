@@ -39,7 +39,7 @@ class Album:
 
     year: str
     type: str
-    publisher: Publisher
+    publisher: Publisher | None
 
     track_urls: list[str] = field(
         repr=False,
