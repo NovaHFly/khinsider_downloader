@@ -10,8 +10,14 @@ logger = logging.getLogger('khinsider-parser')
 
 
 def parse_track_data(html_text: str) -> dict[str, str]:
-    soup = BeautifulSoup(html_text, 'lxml')
-    return {'mp3_url': soup.select_one('audio')['src']}
+    match = re.search(r'<audio.+src="(.+)"', html_text)
+
+    logger.debug(f'parse_track_data:{match = }')
+
+    if not match:
+        return {}
+
+    return {'mp3_url': match[1]}
 
 
 def parse_album_data(html_text: str) -> dict[str, Any]:
@@ -38,10 +44,10 @@ def parse_album_data(html_text: str) -> dict[str, Any]:
 
 
 def parse_publisher_data(html_text: str) -> dict[str, str]:
-    match = re.search(
-        r'Published by:.+<a href=".+/(.+)">(.+)</a>', html_text
-    )
+    match = re.search(r'Published by:.+<a href=".+/(.+)">(.+)</a>', html_text)
+
     logger.debug(f'parse_publisher_data:{match = }')
+
     if not match:
         return {}
 

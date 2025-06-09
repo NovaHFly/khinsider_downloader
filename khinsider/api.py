@@ -75,6 +75,9 @@ def get_track(url: str) -> AudioTrack:
     album = get_album(url.rsplit('/', maxsplit=1)[0])
 
     track_data = parse_track_data(res.text)
+    if not track_data:
+        raise ValueError('Page does not contain track audio!')
+
     track_data |= {
         'page_url': url,
         'album': album,
