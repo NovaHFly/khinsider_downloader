@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import Any
 
@@ -5,13 +6,15 @@ from bs4 import BeautifulSoup, Tag
 
 from .constants import KHINSIDER_BASE_URL
 
+logger = logging.getLogger('khinsider-parser')
 
-def parse_track_page(html_text: str) -> dict[str, str]:
+
+def parse_track_data(html_text: str) -> dict[str, str]:
     soup = BeautifulSoup(html_text, 'lxml')
     return {'mp3_url': soup.select_one('audio')['src']}
 
 
-def parse_album_page(html_text: str) -> dict[str, Any]:
+def parse_album_data(html_text: str) -> dict[str, Any]:
     soup = BeautifulSoup(html_text, 'lxml')
     return {
         'name': soup.select_one('h2').text,
@@ -31,6 +34,20 @@ def parse_album_page(html_text: str) -> dict[str, Any]:
             for row in soup.select('#songlist tr')
             if (anchor := row.select_one('td a'))
         ],
+    }
+
+
+def parse_publisher_data(html_text: str) -> dict[str, str]:
+    match = re.search(
+        r'Published by:.+<a href=".+/(.+)">(.+)</a>', html_text
+    )
+    logger.debug(f'parse_publisher_data:{match = }')
+    if not match:
+        return {}
+
+    return {
+        'name': match[2],
+        'slug': match[1],
     }
 
 

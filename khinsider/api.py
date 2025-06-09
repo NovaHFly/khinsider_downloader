@@ -7,11 +7,17 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import KHINSIDER_BASE_URL
 from .decorators import log_errors
-from .models import Album, AlbumSearchResult, AudioTrack
+from .models import (
+    Album,
+    AlbumSearchResult,
+    AudioTrack,
+    Publisher,
+)
 from .parser import (
-    parse_album_page,
+    parse_album_data,
     parse_album_search_result,
-    parse_track_page,
+    parse_track_data,
+    parse_publisher_data,
 )
 from .search import QueryBuilder
 from .validators import (
@@ -37,8 +43,16 @@ def get_album(url: str) -> Album:
 
     album_slug = url.rsplit('/', maxsplit=1)[-1]
 
-    album_data = parse_album_page(res.text)
+    album_data = parse_album_data(res.text)
     album_data |= {'slug': album_slug}
+
+    publisher_data = parse_publisher_data(res.text)
+    if not publisher_data:
+        publisher = None
+    else:
+        publisher = Publisher(**publisher_data)
+
+    album_data |= {'publisher': publisher}
 
     album = Album(**album_data)
     logger.info(album)
@@ -60,7 +74,7 @@ def get_track(url: str) -> AudioTrack:
 
     album = get_album(url.rsplit('/', maxsplit=1)[0])
 
-    track_data = parse_track_page(res.text)
+    track_data = parse_track_data(res.text)
     track_data |= {
         'page_url': url,
         'album': album,

@@ -7,6 +7,15 @@ from .constants import ALBUM_BASE_URL
 
 
 @dataclass
+class Publisher:
+    name: str
+    slug: str
+
+    def __str__(self) -> str:
+        return f'Uploader "{self.name}"'
+
+
+@dataclass
 class AudioTrack:
     album: 'Album' = field(repr=False)
     page_url: str
@@ -25,10 +34,12 @@ class Album:
     name: str
     slug: str
 
+    # TODO: Rename to album_picture_urls
     thumbnail_urls: Sequence[str]
 
     year: str
     type: str
+    publisher: Publisher
 
     track_urls: list[str] = field(
         repr=False,
