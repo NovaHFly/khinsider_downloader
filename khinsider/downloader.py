@@ -17,7 +17,7 @@ from .decorators import log_errors
 from .exceptions import InvalidUrl
 from .models import AudioTrack
 
-logger = logging.getLogger('khinsider')
+logger = logging.getLogger('khinsider-downloader')
 
 
 class Downloader(ThreadPoolExecutor):
@@ -53,24 +53,6 @@ class Downloader(ThreadPoolExecutor):
         return (task.result() for task in tasks if not task.exception())
 
 
-def gather_track_urls(urls: list[str]) -> Iterator[str]:
-    """Gather all track urls from khinsider urls.
-
-    If provided url is album url, scrape and yield all track urls
-    from its page.
-    """
-    for url in urls:
-        if not (match := re.match(KHINSIDER_URL_REGEX, url)):
-            logger.error(f'Invalid khinsider url: {url}')
-            continue
-
-        if match[2]:
-            yield url
-            continue
-
-        yield from get_album(url).track_urls
-
-
 @retry(
     retry=retry_if_exception_type(httpx.RequestError),
     stop=stop_after_attempt(5),
@@ -91,12 +73,6 @@ def download_track_file(
     logger.info(f'Downloaded track {track} to {file_path}')
 
     return file_path
-
-
-def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
-    """Fetch track data and download it."""
-    track = get_track(url)
-    return download_track_file(track, path)
 
 
 def download_many(
@@ -120,3 +96,9 @@ def download(
 ) -> Iterator[Path]:
     with Downloader(max_workers=thread_count) as downloader:
         yield from downloader.download(url, download_path)
+
+
+def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
+    """Fetch track data and download it."""
+    track = get_track(url)
+    return download_track_file(track, path)
