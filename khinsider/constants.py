@@ -10,3 +10,5 @@ KHINSIDER_URL_REGEX = (
     r'https:\/\/downloads\.khinsider\.com\/'
     r'game-soundtracks\/album\/([\w%.-]+)\/?([\w%.-]+)?'
 )
+
+MAX_CONCURRENT_REQUESTS = 5

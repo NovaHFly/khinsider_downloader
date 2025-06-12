@@ -4,7 +4,6 @@ from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import cloudscraper
 import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
@@ -17,23 +16,9 @@ from .constants import (
 from .decorators import log_errors
 from .exceptions import InvalidUrl
 from .models import AudioTrack
+from .scraper import scraper
 
 logger = logging.getLogger('khinsider-downloader')
-
-scraper = cloudscraper.create_scraper(
-    interpreter='js2py',
-    delay=5,
-    max_concurrent_requests=2,
-    enable_stealth=True,
-    stealth_options={
-        'min_delay': 2.0,
-        'max_delay': 6.0,
-        'human_like_delays': True,
-        'randomize_headers': True,
-        'browser_quirks': True,
-    },
-    browser='chrome',
-)
 
 
 class Downloader(ThreadPoolExecutor):

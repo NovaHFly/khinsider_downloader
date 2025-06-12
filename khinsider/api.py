@@ -1,7 +1,6 @@
 from functools import cache
 from logging import getLogger
 
-import cloudscraper
 import requests
 from bs4 import BeautifulSoup
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
@@ -20,24 +19,10 @@ from .parser import (
     parse_publisher_data,
     parse_track_data,
 )
+from .scraper import scraper
 from .search import QueryBuilder
 from .validators import (
     khinsider_object_exists,
-)
-
-scraper = cloudscraper.create_scraper(
-    interpreter='js2py',
-    delay=5,
-    enable_stealth=True,
-    max_concurrent_requests=2,
-    stealth_options={
-        'min_delay': 2.0,
-        'max_delay': 6.0,
-        'human_like_delays': True,
-        'randomize_headers': True,
-        'browser_quirks': True,
-    },
-    browser='chrome',
 )
 
 logger = getLogger('khinsider_api')
