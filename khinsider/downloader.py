@@ -64,7 +64,10 @@ class Downloader(ThreadPoolExecutor):
         self,
         track_page_urls: Sequence[str],
     ) -> Iterator[AudioTrack]:
-        tasks = [self.submit(get_track, url) for url in track_page_urls]
+        tasks = [
+            self.submit(get_track, *url.rsplit('/', maxsplit=2)[1:])
+            for url in track_page_urls
+        ]
         return (task.result() for task in tasks if not task.exception())
 
 
