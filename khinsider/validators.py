@@ -1,4 +1,4 @@
-import httpx
+import requests
 
 from .constants import KHINSIDER_BASE_URL
 from .exceptions import InvalidUrl, ObjectDoesNotExist
@@ -44,7 +44,7 @@ def url_is_khinsider_album(url: str) -> None:
     raise InvalidUrl(f'Url does not lead to album page: {url}')
 
 
-def khinsider_object_exists(response: httpx.Response) -> None:
+def khinsider_object_exists(response: requests.Response) -> None:
     if 'Ooops!' not in response.text:
         return
 

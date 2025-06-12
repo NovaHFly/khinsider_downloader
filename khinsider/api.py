@@ -1,7 +1,8 @@
 from functools import cache
 from logging import getLogger
 
-import httpx
+import cloudscraper
+import requests
 from bs4 import BeautifulSoup
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
@@ -16,8 +17,8 @@ from .models import (
 from .parser import (
     parse_album_data,
     parse_album_search_result,
-    parse_track_data,
     parse_publisher_data,
+    parse_track_data,
 )
 from .search import QueryBuilder
 from .validators import (
@@ -26,11 +27,13 @@ from .validators import (
     url_is_khinsider_track,
 )
 
+scraper = cloudscraper.create_scraper()
+
 logger = getLogger('khinsider_api')
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.RequestError),
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
     stop=stop_after_attempt(5),
 )
 @cache
@@ -38,7 +41,7 @@ logger = getLogger('khinsider_api')
 def get_album(url: str) -> Album:
     url_is_khinsider_album(url)
 
-    res = httpx.get(url)
+    res = scraper.get(url)
     khinsider_object_exists(res)
 
     album_slug = url.rsplit('/', maxsplit=1)[-1]
@@ -60,7 +63,7 @@ def get_album(url: str) -> Album:
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.RequestError),
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
     stop=stop_after_attempt(5),
 )
 @cache
@@ -69,7 +72,7 @@ def get_track(url: str) -> AudioTrack:
     """Get track data from url."""
     url_is_khinsider_track(url)
 
-    res = httpx.get(url)
+    res = scraper.get(url)
     khinsider_object_exists(res)
 
     album = get_album(url.rsplit('/', maxsplit=1)[0])
@@ -90,7 +93,7 @@ def get_track(url: str) -> AudioTrack:
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.RequestError),
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
     stop=stop_after_attempt(5),
 )
 @log_errors
@@ -98,7 +101,7 @@ def search_albums(query: str) -> list[AlbumSearchResult]:
     full_query = QueryBuilder().search_for(query).build()
 
     url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
-    res = httpx.get(url)
+    res = scraper.get(url)
 
     soup = BeautifulSoup(res.text, 'lxml')
 

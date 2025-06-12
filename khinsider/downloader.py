@@ -4,7 +4,8 @@ from collections.abc import Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import httpx
+import cloudscraper
+import requests
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .api import get_album, get_track
@@ -18,6 +19,8 @@ from .exceptions import InvalidUrl
 from .models import AudioTrack
 
 logger = logging.getLogger('khinsider-downloader')
+
+scraper = cloudscraper.create_scraper()
 
 
 class Downloader(ThreadPoolExecutor):
@@ -54,7 +57,7 @@ class Downloader(ThreadPoolExecutor):
 
 
 @retry(
-    retry=retry_if_exception_type(httpx.RequestError),
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
     stop=stop_after_attempt(5),
 )
 @log_errors
@@ -62,7 +65,7 @@ def download_track_file(
     track: AudioTrack, path: Path = DOWNLOADS_PATH
 ) -> Path:
     """Download track file."""
-    response = httpx.get(track.mp3_url).raise_for_status()
+    response = scraper.get(track.mp3_url).raise_for_status()
 
     file_path = path / track.album.slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
