@@ -10,7 +10,7 @@ from .constants import KHINSIDER_BASE_URL
 from .decorators import log_errors
 from .models import (
     Album,
-    AlbumSearchResult,
+    AlbumShort,
     AudioTrack,
     Publisher,
 )
@@ -23,8 +23,6 @@ from .parser import (
 from .search import QueryBuilder
 from .validators import (
     khinsider_object_exists,
-    url_is_khinsider_album,
-    url_is_khinsider_track,
 )
 
 scraper = cloudscraper.create_scraper(
@@ -50,8 +48,8 @@ logger = getLogger('khinsider_api')
 )
 @cache
 @log_errors(logger=logger)
-def get_album(url: str) -> Album:
-    url_is_khinsider_album(url)
+def get_album(slug: str) -> Album:
+    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/album/{slug}'
 
     res = scraper.get(url)
     khinsider_object_exists(res)
@@ -80,14 +78,17 @@ def get_album(url: str) -> Album:
 )
 @cache
 @log_errors
-def get_track(url: str) -> AudioTrack:
+def get_track(track_name: str, album_slug: str) -> AudioTrack:
     """Get track data from url."""
-    url_is_khinsider_track(url)
+    url = (
+        f'{KHINSIDER_BASE_URL}/game-soundtracks/album/'
+        f'{album_slug}/{track_name}'
+    )
 
     res = scraper.get(url)
     khinsider_object_exists(res)
 
-    album = get_album(url.rsplit('/', maxsplit=1)[0])
+    album = get_album(album_slug)
 
     track_data = parse_track_data(res.text)
     if not track_data:
@@ -109,7 +110,7 @@ def get_track(url: str) -> AudioTrack:
     stop=stop_after_attempt(5),
 )
 @log_errors
-def search_albums(query: str) -> list[AlbumSearchResult]:
+def search_albums(query: str) -> list[AlbumShort]:
     full_query = QueryBuilder().search_for(query).build()
 
     url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
@@ -123,6 +124,27 @@ def search_albums(query: str) -> list[AlbumSearchResult]:
     result_tags = result_tags[1:]
 
     return [
-        AlbumSearchResult(**parse_album_search_result(tag))
-        for tag in result_tags
+        AlbumShort(**parse_album_search_result(tag)) for tag in result_tags
+    ]
+
+
+# FIXME: Duplicate code with above function
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@log_errors
+def get_publisher_albums(publisher_slug: str) -> list[AlbumShort]:
+    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/publisher/{publisher_slug}'
+    res = scraper.get(url)
+
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    if not (result_tags := soup.select('table.albumList tr')):
+        return []
+
+    result_tags = result_tags[1:]
+
+    return [
+        AlbumShort(**parse_album_search_result(tag)) for tag in result_tags
     ]

@@ -62,7 +62,9 @@ def parse_album_search_result(result_tag: Tag) -> dict[str, str]:
 
     name_anchor = col_tags[0].select_one('a')
     album_name = name_anchor.text
-    album_url = KHINSIDER_BASE_URL + name_anchor.attrs['href']
+    album_slug = (KHINSIDER_BASE_URL + name_anchor.attrs['href']).rsplit(
+        '/', maxsplit=1
+    )[-1]
     album_type = col_tags[2].text
     album_year = col_tags[3].text
 
@@ -70,5 +72,5 @@ def parse_album_search_result(result_tag: Tag) -> dict[str, str]:
         'name': album_name,
         'type': album_type,
         'year': album_year,
-        'url': album_url,
+        'slug': album_slug,
     }

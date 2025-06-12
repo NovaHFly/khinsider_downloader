@@ -56,9 +56,8 @@ class Album:
 
 
 @dataclass
-class AlbumSearchResult:
+class AlbumShort:
     name: str
     type: str
     year: str
-
-    url: str
+    slug: str
