@@ -29,6 +29,7 @@ scraper = cloudscraper.create_scraper(
     interpreter='js2py',
     delay=5,
     enable_stealth=True,
+    max_concurrent_requests=2,
     stealth_options={
         'min_delay': 2.0,
         'max_delay': 6.0,

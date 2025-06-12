@@ -23,6 +23,7 @@ logger = logging.getLogger('khinsider-downloader')
 scraper = cloudscraper.create_scraper(
     interpreter='js2py',
     delay=5,
+    max_concurrent_requests=2,
     enable_stealth=True,
     stealth_options={
         'min_delay': 2.0,
@@ -65,7 +66,7 @@ class Downloader(ThreadPoolExecutor):
         track_page_urls: Sequence[str],
     ) -> Iterator[AudioTrack]:
         tasks = [
-            self.submit(get_track, *url.rsplit('/', maxsplit=2)[1:])
+            self.submit(get_track, *url.rsplit('/', maxsplit=2)[:0:-1])
             for url in track_page_urls
         ]
         return (task.result() for task in tasks if not task.exception())
