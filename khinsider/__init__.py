@@ -4,10 +4,10 @@ from .api import (
 )
 from .constants import (
     ALBUM_BASE_URL as ALBUM_BASE_URL,
-    DEFAULT_THREAD_COUNT as DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH as DOWNLOADS_PATH,
     KHINSIDER_BASE_URL as KHINSIDER_BASE_URL,
     KHINSIDER_URL_REGEX as KHINSIDER_URL_REGEX,
+    MAX_CONCURRENT_REQUESTS as MAX_CONCURRENT_REQUESTS,
 )
 from .downloader import (
     download as download,

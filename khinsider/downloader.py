@@ -9,9 +9,9 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .api import get_album, get_track
 from .constants import (
-    DEFAULT_THREAD_COUNT,
     DOWNLOADS_PATH,
     KHINSIDER_URL_REGEX,
+    MAX_CONCURRENT_REQUESTS,
 )
 from .decorators import log_errors
 from .exceptions import InvalidUrl
@@ -81,7 +81,7 @@ def download_track_file(
 
 def download_many(
     *urls: str,
-    thread_count: int = DEFAULT_THREAD_COUNT,
+    thread_count: int = MAX_CONCURRENT_REQUESTS,
     download_path: Path = DOWNLOADS_PATH,
 ) -> Iterator[Path | None]:
     """Download all tracks from khinsider urls.
@@ -95,7 +95,7 @@ def download_many(
 
 def download(
     url: str,
-    thread_count: int = DEFAULT_THREAD_COUNT,
+    thread_count: int = MAX_CONCURRENT_REQUESTS,
     download_path: Path = None,
 ) -> Iterator[Path]:
     with Downloader(max_workers=thread_count) as downloader:

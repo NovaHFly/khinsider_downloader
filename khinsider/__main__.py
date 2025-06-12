@@ -5,7 +5,7 @@ from pathlib import Path
 from pprint import pprint
 
 from khinsider.api import get_album, search_albums
-from khinsider.constants import DEFAULT_THREAD_COUNT
+from khinsider.constants import MAX_CONCURRENT_REQUESTS
 from khinsider.decorators import log_time
 from khinsider.downloader import download_many
 
@@ -43,7 +43,7 @@ def construct_argparser() -> argparse.ArgumentParser:
         '--threads',
         '-t',
         type=int,
-        default=DEFAULT_THREAD_COUNT,
+        default=MAX_CONCURRENT_REQUESTS,
     )
 
     return parser
