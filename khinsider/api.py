@@ -27,7 +27,19 @@ from .validators import (
     url_is_khinsider_track,
 )
 
-scraper = cloudscraper.create_scraper()
+scraper = cloudscraper.create_scraper(
+    interpreter='js2py',
+    delay=5,
+    enable_stealth=True,
+    stealth_options={
+        'min_delay': 2.0,
+        'max_delay': 6.0,
+        'human_like_delays': True,
+        'randomize_headers': True,
+        'browser_quirks': True,
+    },
+    browser='chrome',
+)
 
 logger = getLogger('khinsider_api')
 
