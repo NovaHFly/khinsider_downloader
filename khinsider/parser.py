@@ -5,6 +5,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from .constants import KHINSIDER_BASE_URL
+from .util import parse_khinsider_url
 
 logger = logging.getLogger('khinsider-parser')
 
@@ -62,9 +63,10 @@ def parse_album_search_result(result_tag: Tag) -> dict[str, str]:
 
     name_anchor = col_tags[0].select_one('a')
     album_name = name_anchor.text
-    album_slug = (KHINSIDER_BASE_URL + name_anchor.attrs['href']).rsplit(
-        '/', maxsplit=1
-    )[-1]
+
+    album_url = KHINSIDER_BASE_URL + name_anchor.attrs['href']
+    album_slug = parse_khinsider_url(album_url)[0]
+
     album_type = col_tags[2].text
     album_year = col_tags[3].text
 

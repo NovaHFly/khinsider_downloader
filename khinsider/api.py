@@ -34,13 +34,11 @@ logger = getLogger('khinsider_api')
 )
 @cache
 @log_errors(logger=logger)
-def get_album(slug: str) -> Album:
-    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/album/{slug}'
+def get_album(album_slug: str) -> Album:
+    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/album/{album_slug}'
 
     res = scraper.get(url)
     khinsider_object_exists(res)
-
-    album_slug = url.rsplit('/', maxsplit=1)[-1]
 
     album_data = parse_album_data(res.text)
     album_data |= {'slug': album_slug}

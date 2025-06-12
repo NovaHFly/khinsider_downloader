@@ -4,6 +4,7 @@ from functools import cached_property
 from urllib.parse import unquote
 
 from .constants import ALBUM_BASE_URL
+from .util import parse_khinsider_url, full_unquote
 
 
 @dataclass
@@ -26,7 +27,7 @@ class AudioTrack:
 
     @cached_property
     def filename(self) -> str:
-        return unquote(unquote(self.page_url.rsplit('/')[-1]))
+        return full_unquote(parse_khinsider_url(self.page_url)[1])
 
 
 @dataclass
