@@ -20,7 +20,7 @@ $ python3 -m khinsider [-h] [--threads THREADS] (URLS ... | --file FILE)
 ```
 
 ## Used libraries
-- [httpx](https://www.python-httpx.org/)
+- [cloudscraper](https://github.com/venomous/cloudscraper)
 - [tenacity](https://github.com/jd/tenacity)
 - [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/)
 - [lxml](https://lxml.de/)
