@@ -51,7 +51,7 @@ class Downloader(ThreadPoolExecutor):
             yield fetch_and_download_track(url, path=dl_path)
             return
 
-        album = get_album(url)
+        album = get_album(match[1])
         download_tasks = [
             self.submit(fetch_and_download_track, url, dl_path)
             for url in album.track_urls
@@ -113,7 +113,11 @@ def download(
         yield from downloader.download(url, download_path)
 
 
-def fetch_and_download_track(url: str, path: Path = DOWNLOADS_PATH) -> Path:
+def fetch_and_download_track(
+    track_name: str,
+    album_slug: str,
+    path: Path = DOWNLOADS_PATH,
+) -> Path:
     """Fetch track data and download it."""
-    track = get_track(url)
+    track = get_track(track_name, album_slug)
     return download_track_file(track, path)
