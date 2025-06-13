@@ -3,6 +3,9 @@ import time
 from functools import wraps
 from typing import Callable, ParamSpec, TypeVar
 
+from requests.exceptions import Timeout
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
+
 P = ParamSpec('P')
 T = TypeVar('T')
 
@@ -53,3 +56,9 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
         return result
 
     return wrapper
+
+
+retry_if_timeout = retry(
+    retry=retry_if_exception_type(Timeout),
+    stop=stop_after_attempt(5),
+)

@@ -5,16 +5,14 @@ from logging import getLogger
 from pathlib import Path
 
 import cloudscraper
-import requests
 from bs4 import BeautifulSoup
-from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .constants import (
     DOWNLOADS_PATH,
     KHINSIDER_BASE_URL,
     MAX_CONCURRENT_REQUESTS,
 )
-from .decorators import log_errors
+from .decorators import log_errors, retry_if_timeout
 from .models import (
     Album,
     AlbumShort,
@@ -52,10 +50,7 @@ scraper = cloudscraper.create_scraper(
 logger = getLogger('khinsider-scraper')
 
 
-@retry(
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
-    stop=stop_after_attempt(5),
-)
+@retry_if_timeout
 @cache
 @log_errors(logger=logger)
 def get_album(
@@ -82,10 +77,7 @@ def get_album(
     return album
 
 
-@retry(
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
-    stop=stop_after_attempt(5),
-)
+@retry_if_timeout
 @cache
 @log_errors
 def get_track(
@@ -128,10 +120,7 @@ def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
         return (task.result() for task in tasks if not task.exception())
 
 
-@retry(
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
-    stop=stop_after_attempt(5),
-)
+@retry_if_timeout
 @log_errors
 def search_albums(query: str) -> list[AlbumShort]:
     full_query = QueryBuilder().search_for(query).build()
@@ -152,10 +141,7 @@ def search_albums(query: str) -> list[AlbumShort]:
 
 
 # FIXME: Duplicate code with above function
-@retry(
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
-    stop=stop_after_attempt(5),
-)
+@retry_if_timeout
 @log_errors
 def get_publisher_albums(publisher_slug: str) -> list[AlbumShort]:
     url = f'{KHINSIDER_BASE_URL}/game-soundtracks/publisher/{publisher_slug}'
@@ -233,10 +219,7 @@ def _fetch_and_download_track(
     return download_track_file(track, path)
 
 
-@retry(
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
-    stop=stop_after_attempt(5),
-)
+@retry_if_timeout
 @log_errors
 def download_track_file(
     track: AudioTrack,
