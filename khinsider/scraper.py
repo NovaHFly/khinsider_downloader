@@ -1,6 +1,37 @@
-import cloudscraper
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from functools import cache
+from logging import getLogger
+from pathlib import Path
 
-from .constants import MAX_CONCURRENT_REQUESTS
+import cloudscraper
+import requests
+from bs4 import BeautifulSoup
+from tenacity import retry, retry_if_exception_type, stop_after_attempt
+
+from .constants import (
+    DOWNLOADS_PATH,
+    KHINSIDER_BASE_URL,
+    MAX_CONCURRENT_REQUESTS,
+)
+from .decorators import log_errors
+from .models import (
+    Album,
+    AlbumShort,
+    AudioTrack,
+    Publisher,
+)
+from .parser import (
+    parse_album_data,
+    parse_album_search_result,
+    parse_publisher_data,
+    parse_track_data,
+)
+from .search import QueryBuilder
+from .util import parse_khinsider_url
+from .validators import (
+    khinsider_object_exists,
+)
 
 scraper = cloudscraper.create_scraper(
     interpreter='js2py',
@@ -16,3 +47,209 @@ scraper = cloudscraper.create_scraper(
     },
     browser='chrome',
 )
+
+
+logger = getLogger('khinsider-scraper')
+
+
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@cache
+@log_errors(logger=logger)
+def get_album(
+    album_slug: str,
+) -> Album:
+    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/album/{album_slug}'
+
+    res = scraper.get(url)
+    khinsider_object_exists(res)
+
+    album_data = parse_album_data(res.text)
+    album_data |= {'slug': album_slug}
+
+    publisher_data = parse_publisher_data(res.text)
+    if not publisher_data:
+        publisher = None
+    else:
+        publisher = Publisher(**publisher_data)
+
+    album_data |= {'publisher': publisher}
+
+    album = Album(**album_data)
+    logger.info(album)
+    return album
+
+
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@cache
+@log_errors
+def get_track(
+    album_slug: str,
+    track_name: str,
+) -> AudioTrack:
+    """Get track data from url."""
+    url = (
+        f'{KHINSIDER_BASE_URL}/game-soundtracks/album/'
+        f'{album_slug}/{track_name}'
+    )
+
+    res = scraper.get(url)
+    khinsider_object_exists(res)
+
+    album = get_album(album_slug)
+
+    track_data = parse_track_data(res.text)
+    if not track_data:
+        raise ValueError('Page does not contain track audio!')
+
+    track_data |= {
+        'page_url': url,
+        'album': album,
+    }
+
+    track = AudioTrack(**track_data)
+    logger.info(track)
+
+    return track
+
+
+def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
+    """Fetch track data from multiple urls."""
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
+        tasks = [
+            executor.submit(get_track, *parse_khinsider_url(url))
+            for url in track_page_urls
+        ]
+        return (task.result() for task in tasks if not task.exception())
+
+
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@log_errors
+def search_albums(query: str) -> list[AlbumShort]:
+    full_query = QueryBuilder().search_for(query).build()
+
+    url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
+    res = scraper.get(url)
+
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    if not (result_tags := soup.select('table.albumList tr')):
+        return []
+
+    result_tags = result_tags[1:]
+
+    return [
+        AlbumShort(**parse_album_search_result(tag)) for tag in result_tags
+    ]
+
+
+# FIXME: Duplicate code with above function
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@log_errors
+def get_publisher_albums(publisher_slug: str) -> list[AlbumShort]:
+    url = f'{KHINSIDER_BASE_URL}/game-soundtracks/publisher/{publisher_slug}'
+    res = scraper.get(url)
+
+    soup = BeautifulSoup(res.text, 'lxml')
+
+    if not (result_tags := soup.select('table.albumList tr')):
+        return []
+
+    result_tags = result_tags[1:]
+
+    return [
+        AlbumShort(**parse_album_search_result(tag)) for tag in result_tags
+    ]
+
+
+def download_many(
+    *urls: str,
+    thread_count: int = MAX_CONCURRENT_REQUESTS,
+    download_path: Path = DOWNLOADS_PATH,
+) -> Iterator[Path | None]:
+    """Download all tracks from khinsider urls.
+
+    If provided url is album url, download all tracks from it.
+    """
+    with ThreadPoolExecutor(max_workers=thread_count) as executor:
+        for url in urls:
+            yield from _download(url, executor, download_path)
+
+
+def _download(
+    url: str,
+    download_path: Path,
+    executor: ThreadPoolExecutor = None,
+) -> Iterator[Path]:
+    extracted = parse_khinsider_url(url)
+
+    dl_path = (download_path or DOWNLOADS_PATH).absolute()
+    dl_path.mkdir(parents=True, exist_ok=True)
+
+    if extracted[1]:
+        yield _fetch_and_download_track(*extracted, path=dl_path)
+        return
+
+    album = get_album(extracted[1])
+
+    if not executor:
+        yield from (
+            _fetch_and_download_track(*parse_khinsider_url(url), path=dl_path)
+            for url in album.track_urls
+        )
+        return
+
+    download_tasks = [
+        executor.submit(
+            _fetch_and_download_track,
+            *parse_khinsider_url(url),
+            dl_path,
+        )
+        for url in album.track_urls
+    ]
+    yield from (
+        task.result() for task in download_tasks if not task.exception()
+    )
+
+
+def _fetch_and_download_track(
+    album_slug: str,
+    track_name: str,
+    path: Path = DOWNLOADS_PATH,
+) -> Path:
+    """Fetch track data and download it."""
+    track = get_track(album_slug, track_name)
+    return _download_track_file(track, path)
+
+
+@retry(
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    stop=stop_after_attempt(5),
+)
+@log_errors
+def _download_track_file(
+    track: AudioTrack, path: Path = DOWNLOADS_PATH
+) -> Path:
+    """Download track file."""
+    response = scraper.get(track.mp3_url).raise_for_status()
+
+    file_path = path / track.album.slug / track.filename
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with file_path.open('wb') as f:
+        f.write(response.content)
+
+    logger.info(f'Downloaded track {track} to {file_path}')
+
+    return file_path
