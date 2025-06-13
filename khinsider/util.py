@@ -1,8 +1,7 @@
 from functools import partial
 from urllib.parse import quote, unquote
 
-from constants import KHINSIDER_URL_REGEX
-
+from .constants import KHINSIDER_URL_REGEX
 from .exceptions import InvalidUrl
 
 
