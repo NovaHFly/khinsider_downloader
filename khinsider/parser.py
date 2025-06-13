@@ -59,29 +59,28 @@ def parse_publisher_data(html_text: str) -> dict[str, str]:
 
 
 def parse_search_page(html_text: str) -> list[dict[str, str]]:
+    def _parse_table_row(row_tag: Tag) -> dict[str, str]:
+        col_tags = row_tag.select('td')[1:]
+
+        name_anchor = col_tags[0].select_one('a')
+        album_name = name_anchor.text
+
+        album_url = KHINSIDER_BASE_URL + name_anchor.attrs['href']
+        album_slug = parse_khinsider_url(album_url)[0]
+
+        album_type = col_tags[2].text
+        album_year = col_tags[3].text
+
+        return {
+            'name': album_name,
+            'type': album_type,
+            'year': album_year,
+            'slug': album_slug,
+        }
+
     soup = BeautifulSoup(html_text, 'lxml')
 
     if not (result_tags := soup.select('table.albumList tr')[1:]):
         return []
 
-    return [parse_album_search_result(tag) for tag in result_tags]
-
-
-def parse_album_search_result(result_tag: Tag) -> dict[str, str]:
-    col_tags = result_tag.select('td')[1:]
-
-    name_anchor = col_tags[0].select_one('a')
-    album_name = name_anchor.text
-
-    album_url = KHINSIDER_BASE_URL + name_anchor.attrs['href']
-    album_slug = parse_khinsider_url(album_url)[0]
-
-    album_type = col_tags[2].text
-    album_year = col_tags[3].text
-
-    return {
-        'name': album_name,
-        'type': album_type,
-        'year': album_year,
-        'slug': album_slug,
-    }
+    return [_parse_table_row(tag) for tag in result_tags]
