@@ -15,6 +15,7 @@ from .downloader import (
     download_track_file as download_track_file,
     Downloader as Downloader,
     fetch_and_download_track as fetch_and_download_track,
+    fetch_tracks as fetch_tracks,
 )
 from .exceptions import (
     InvalidUrl as InvalidUrl,

@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import requests
+from deprecation import deprecated
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .api import get_album, get_track
@@ -47,12 +48,22 @@ class Downloader(ThreadPoolExecutor):
             task.result() for task in download_tasks if not task.exception()
         )
 
+    @deprecated()
     def fetch_tracks(
         self,
         track_page_urls: Sequence[str],
     ) -> Iterator[AudioTrack]:
         tasks = [
             self.submit(get_track, *parse_khinsider_url(url)[::-1])
+            for url in track_page_urls
+        ]
+        return (task.result() for task in tasks if not task.exception())
+
+
+def fetch_tracks(track_page_urls: list[str]) -> Iterator[AudioTrack]:
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS) as executor:
+        tasks = [
+            executor.submit(get_track, *parse_khinsider_url(url)[::-1])
             for url in track_page_urls
         ]
         return (task.result() for task in tasks if not task.exception())
