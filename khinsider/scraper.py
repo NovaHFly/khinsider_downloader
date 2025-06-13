@@ -120,6 +120,7 @@ def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
 
 
 @retry_if_timeout
+@cache
 @log_errors(logger=logger)
 def search_albums(query: str) -> list[AlbumShort]:
     full_query = QueryBuilder().search_for(query).build()
@@ -134,6 +135,7 @@ def search_albums(query: str) -> list[AlbumShort]:
 
 
 @retry_if_timeout
+@cache
 @log_errors(logger=logger)
 def get_publisher_albums(publisher_slug: str) -> list[AlbumShort]:
     url = f'{KHINSIDER_BASE_URL}/game-soundtracks/publisher/{publisher_slug}'
