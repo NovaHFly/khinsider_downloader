@@ -7,7 +7,7 @@ DOWNLOADS_PATH = Path('downloads')
 
 KHINSIDER_URL_REGEX = re.compile(
     r'https:\/\/downloads\.khinsider\.com\/'
-    r'game-soundtracks\/album\/([\w~%.-]+)\/?([\w~%.-]+)?'
+    r'game-soundtracks\/album\/([^\s/]+)\/?([^\s/]+)?'
 )
 
 MAX_CONCURRENT_REQUESTS = 5
