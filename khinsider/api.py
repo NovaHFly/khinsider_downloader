@@ -34,7 +34,9 @@ logger = getLogger('khinsider_api')
 )
 @cache
 @log_errors(logger=logger)
-def get_album(album_slug: str) -> Album:
+def get_album(
+    album_slug: str,
+) -> Album:
     url = f'{KHINSIDER_BASE_URL}/game-soundtracks/album/{album_slug}'
 
     res = scraper.get(url)
@@ -62,7 +64,10 @@ def get_album(album_slug: str) -> Album:
 )
 @cache
 @log_errors
-def get_track(track_name: str, album_slug: str) -> AudioTrack:
+def get_track(
+    album_slug: str,
+    track_name: str,
+) -> AudioTrack:
     """Get track data from url."""
     url = (
         f'{KHINSIDER_BASE_URL}/game-soundtracks/album/'

@@ -67,15 +67,17 @@ def _download(
 
     if not executor:
         yield from (
-            _fetch_and_download_track(
-                *parse_khinsider_url(url)[::-1], path=dl_path
-            )
+            _fetch_and_download_track(*parse_khinsider_url(url), path=dl_path)
             for url in album.track_urls
         )
         return
 
     download_tasks = [
-        executor.submit(_fetch_and_download_track, url, dl_path)
+        executor.submit(
+            _fetch_and_download_track,
+            *parse_khinsider_url(url),
+            dl_path,
+        )
         for url in album.track_urls
     ]
     yield from (
@@ -84,12 +86,12 @@ def _download(
 
 
 def _fetch_and_download_track(
-    track_name: str,
     album_slug: str,
+    track_name: str,
     path: Path = DOWNLOADS_PATH,
 ) -> Path:
     """Fetch track data and download it."""
-    track = get_track(track_name, album_slug)
+    track = get_track(album_slug, track_name)
     return _download_track_file(track, path)
 
 
