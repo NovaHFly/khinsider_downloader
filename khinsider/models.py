@@ -1,10 +1,9 @@
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
-from urllib.parse import unquote
 
 from .constants import ALBUM_BASE_URL
-from .util import parse_khinsider_url, full_unquote
+from .util import full_unquote, parse_khinsider_url
 
 
 @dataclass
