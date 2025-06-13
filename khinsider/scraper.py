@@ -230,7 +230,7 @@ def _fetch_and_download_track(
 ) -> Path:
     """Fetch track data and download it."""
     track = get_track(album_slug, track_name)
-    return _download_track_file(track, path)
+    return download_track_file(track, path)
 
 
 @retry(
@@ -238,8 +238,9 @@ def _fetch_and_download_track(
     stop=stop_after_attempt(5),
 )
 @log_errors
-def _download_track_file(
-    track: AudioTrack, path: Path = DOWNLOADS_PATH
+def download_track_file(
+    track: AudioTrack,
+    path: Path = DOWNLOADS_PATH,
 ) -> Path:
     """Download track file."""
     response = scraper.get(track.mp3_url).raise_for_status()

@@ -17,6 +17,7 @@ from .models import (
 )
 from .scraper import (
     download_many as download_many,
+    download_track_file as download_track_file,
     fetch_tracks as fetch_tracks,
     get_album as get_album,
     get_track as get_track,
