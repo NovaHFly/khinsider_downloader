@@ -20,7 +20,9 @@ from .scraper import (
     download_track_file as download_track_file,
     fetch_tracks as fetch_tracks,
     get_album as get_album,
+    get_publisher_albums as get_publisher_albums,
     get_track as get_track,
+    search_albums as search_albums,
 )
 from .util import (
     parse_khinsider_url as parse_khinsider_url,
