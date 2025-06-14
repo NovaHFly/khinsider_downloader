@@ -220,7 +220,8 @@ def download_track_file(
     path: Path = DOWNLOADS_PATH,
 ) -> Path:
     """Download track file."""
-    response = scraper.get(track.mp3_url).raise_for_status()
+    response = scraper.get(track.mp3_url)
+    response.raise_for_status()
 
     file_path = path / track.album.slug / track.filename
     file_path.parent.mkdir(parents=True, exist_ok=True)
