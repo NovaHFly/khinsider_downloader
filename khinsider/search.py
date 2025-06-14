@@ -1,5 +1,6 @@
 from typing import Self
 
+from .enums import AlbumTypes
 from .util import normalize_query
 
 
@@ -8,7 +9,7 @@ class QueryBuilder:
         # TODO: album category, sort by
         self._search = ''
         self._year = ''
-        self._type = ''
+        self._type = AlbumTypes.EMPTY
 
     def search_for(self, query: str) -> Self:
         self._search = normalize_query(query)
@@ -18,7 +19,7 @@ class QueryBuilder:
         self._year = year
         return self
 
-    def album_type(self, type_: str) -> Self:
+    def album_type(self, type_: AlbumTypes) -> Self:
         self._type = type_
         return self
 
@@ -26,6 +27,6 @@ class QueryBuilder:
         query = (
             f'search={self._search}'
             f'&album_year={self._year}'
-            f'&album_type={self._type}'
+            f'&album_type={self._type.value}'
         )
         return query

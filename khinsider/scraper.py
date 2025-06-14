@@ -12,6 +12,7 @@ from .constants import (
     MAX_CONCURRENT_REQUESTS,
 )
 from .decorators import log_errors, retry_if_timeout
+from .enums import AlbumTypes
 from .models import (
     Album,
     AlbumShort,
@@ -122,7 +123,9 @@ def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
 @retry_if_timeout
 @cache
 @log_errors(logger=logger)
-def search_albums(query: str) -> list[AlbumShort]:
+def search_albums(
+    query: str, album_type: AlbumTypes = AlbumTypes.EMPTY
+) -> list[AlbumShort]:
     full_query = QueryBuilder().search_for(query).build()
     url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
 
