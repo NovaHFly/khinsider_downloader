@@ -126,7 +126,9 @@ def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
 def search_albums(
     query: str, album_type: AlbumTypes = AlbumTypes.EMPTY
 ) -> list[AlbumShort]:
-    full_query = QueryBuilder().search_for(query).build()
+    full_query = (
+        QueryBuilder().search_for(query).album_type(album_type).build()
+    )
     url = f'{KHINSIDER_BASE_URL}/search?{full_query}'
 
     res = scraper.get(url)
