@@ -108,8 +108,8 @@ def parse_search_page(html_text: str) -> list[dict]:
             KHINSIDER_BASE_URL + name_anchor.attrs['href']
         )[0]
 
-        album_type = col_tags[2].text
-        album_year = col_tags[3].text
+        album_type = col_tags[2].text.strip() or None
+        album_year = col_tags[3].text.strip() or None
 
         return {
             'name': album_name,
