@@ -9,7 +9,7 @@ from .util import parse_khinsider_url
 logger = logging.getLogger('khinsider-parser')
 
 
-def parse_track_data(html_text: str) -> dict[str, str]:
+def parse_track_data(html_text: str) -> dict:
     """Parse track data from html."""
     match = re.search(r'<audio.+src="(.+)"', html_text)
 
@@ -22,7 +22,7 @@ def parse_track_data(html_text: str) -> dict[str, str]:
     return {'mp3_url': match[1]}
 
 
-def parse_album_data(html_text: str) -> dict[str, str | list[str] | None]:
+def parse_album_data(html_text: str) -> dict:
     """Parse album data from html."""
     soup = BeautifulSoup(html_text, 'lxml')
 
@@ -35,7 +35,7 @@ def parse_album_data(html_text: str) -> dict[str, str | list[str] | None]:
         album_title = None
 
     # * Art
-    album_art = [
+    album_art: list[str] = [
         anchor.attrs['href'] for anchor in soup.select('.albumImage a')
     ]
     if not album_art:
@@ -43,9 +43,10 @@ def parse_album_data(html_text: str) -> dict[str, str | list[str] | None]:
 
     # * Year
     if match := re.search(r'Year: <b.(\d{4})</b>', html_text):
-        album_year: str = match[1]
+        album_year: str | None = match[1]
     else:
         logger.warning('Album year not found in html')
+        album_year = None
 
     # * Type
     if tag := soup.select_one('p[align=left] b a'):
@@ -55,7 +56,7 @@ def parse_album_data(html_text: str) -> dict[str, str | list[str] | None]:
         album_type = None
 
     # * Track page urls
-    track_urls = [
+    track_urls: list[str] = [
         KHINSIDER_BASE_URL + anchor.attrs['href']
         for row in soup.select('#songlist tr')
         if (anchor := row.select_one('td a'))
@@ -72,7 +73,7 @@ def parse_album_data(html_text: str) -> dict[str, str | list[str] | None]:
     }
 
 
-def parse_publisher_data(html_text: str) -> dict[str, str]:
+def parse_publisher_data(html_text: str) -> dict:
     """Parse publisher data from html."""
     match = re.search(r'Published by:.+<a href=".+/(.+)">(.+)</a>', html_text)
     logger.debug(f'parse_publisher_data:{match = }')
@@ -87,10 +88,10 @@ def parse_publisher_data(html_text: str) -> dict[str, str]:
     }
 
 
-def parse_search_page(html_text: str) -> list[dict[str, str]]:
+def parse_search_page(html_text: str) -> list[dict]:
     """Parse search results."""
 
-    def _parse_table_row(row_tag: Tag) -> dict[str, str]:
+    def _parse_table_row(row_tag: Tag) -> dict:
         col_tags = row_tag.select('td')[1:]
 
         if not col_tags or len(col_tags) < 4:
