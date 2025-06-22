@@ -1,7 +1,10 @@
 import logging
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
+from random import randint
+from shutil import rmtree
 
 from .constants import DOWNLOADS_PATH, MAX_CONCURRENT_REQUESTS
 from .decorators import log_errors, retry_if_timeout
@@ -91,3 +94,17 @@ def download_track_file(
     logger.info(f'Downloaded track {track} to {file_path}')
 
     return file_path
+
+
+@contextmanager
+def setup_download(root_path: Path = DOWNLOADS_PATH) -> Iterator[Path]:
+    """Setup download path and remove it when done."""
+    while download_id := randint(1, 999999):
+        pass
+
+    download_dir = root_path / str(download_id)
+
+    try:
+        yield download_dir
+    finally:
+        rmtree(download_dir, ignore_errors=True)
