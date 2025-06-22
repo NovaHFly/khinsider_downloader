@@ -16,9 +16,9 @@ global_logger = logging.getLogger('khinsider')
 
 
 def log_errors(
-    func: Callable[P, T] = None,
+    func: Callable[P, T] | None = None,
     *,
-    logger: logging.Logger = None,
+    logger: logging.Logger | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]] | Callable[P, T]:
     """Log exceptions raised while calling function."""
     local_logger = logger or global_logger
