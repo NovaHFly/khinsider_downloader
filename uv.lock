@@ -217,7 +217,7 @@ wheels = [
 
 [[package]]
 name = "khinsider-downloader"
-version = "0.2.5.dev3"
+version = "0.2.6"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
