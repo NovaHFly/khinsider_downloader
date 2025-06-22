@@ -71,15 +71,15 @@ class AudioTrack:
 @dataclass
 class AlbumShort:
     name: str
-    type: str
-    year: str
+    type: str | None
+    year: str | None
     slug: str
 
     @property
     def url(self) -> str:
         return f'{ALBUM_BASE_URL}/{self.slug}'
 
-    def to_json(self) -> dict[str, str]:
+    def to_json(self) -> dict:
         return {
             'name': self.name,
             'type': self.type,
@@ -100,8 +100,8 @@ class Album:
     # TODO: Rename to album_picture_urls
     thumbnail_urls: Sequence[str]
 
-    year: str
-    type: str
+    year: str | None
+    type: str | None
     publisher: Publisher | None
 
     track_urls: list[str] = field(
