@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime
 from hashlib import md5
 from threading import Timer
 from typing import Any
 
 from .constants import CACHE_LIFESPAN_DAYS
+
+logger = logging.getLogger('khinsider-cache')
 
 
 class CacheManager:
@@ -41,6 +44,10 @@ class CacheManager:
         return self.__table[md5_hash][0]
 
     def start_garbage_collector(self) -> None:
+        logger.info(
+            'Started cache garbage collector. '
+            f'Interval: {self.__cache_clear_interval} seconds'
+        )
         self.__timer = Timer(
             self.__cache_clear_interval,
             self.delete_old_cache,
@@ -49,8 +56,11 @@ class CacheManager:
 
     def stop_garbage_collector(self) -> None:
         self.__timer.cancel()
+        logger.info('Cache garbage collector is stopped')
 
     def delete_old_cache(self) -> None:
+        logger.info('Deleting old cache...')
+
         to_delete = []
         for key, value in self.__table.items():
             if (datetime.now() - value[1]).seconds >= self.__cache_lifespan:
@@ -61,6 +71,8 @@ class CacheManager:
 
         if self.__run_garbage_collector:
             self.start_garbage_collector()
+
+        logger.info('Old cache deleted')
 
 
 _manager: CacheManager | None = None
