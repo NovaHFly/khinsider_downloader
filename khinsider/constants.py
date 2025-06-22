@@ -19,3 +19,6 @@ and to extract album slug and track name.
 
 MAX_CONCURRENT_REQUESTS = 5
 """Maximum count of concurrent requests to downloads.khinsider.com"""
+
+CACHE_LIFESPAN_DAYS = 1
+"""Maximum number of days cached values are conserved."""

@@ -6,6 +6,8 @@ from typing import Callable, ParamSpec, TypeVar
 from requests.exceptions import Timeout
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
+from .cache import get_manager
+
 P = ParamSpec('P')
 T = TypeVar('T')
 
@@ -53,6 +55,25 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
         global_logger.info(
             f'{func.__name__} took {end_time - start_time:.2f} seconds'
         )
+        return result
+
+    return wrapper
+
+
+def cache(func: Callable[P, T]) -> Callable[P, T]:
+    @wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        cache_manager = get_manager()
+        call_signature = f'{func.__name__}/{args}/{kwargs}'
+
+        if cached_value := cache_manager.get_cached_value(
+            cache_manager.get_hash(call_signature)
+        ):
+            return cached_value
+
+        result = func(*args, **kwargs)
+        cache_manager.cache_value(result, key_value=call_signature)
+
         return result
 
     return wrapper

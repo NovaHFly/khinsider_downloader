@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
-from functools import cache
 from logging import getLogger
 
 import cloudscraper
@@ -9,7 +8,7 @@ from .constants import (
     KHINSIDER_BASE_URL,
     MAX_CONCURRENT_REQUESTS,
 )
-from .decorators import log_errors, retry_if_timeout
+from .decorators import cache, log_errors, retry_if_timeout
 from .enums import AlbumTypes
 from .models import (
     Album,
@@ -48,8 +47,8 @@ scraper = cloudscraper.create_scraper(
 logger = getLogger('khinsider-scraper')
 
 
-@retry_if_timeout
 @cache
+@retry_if_timeout
 @log_errors(logger=logger)
 def get_album(
     album_slug: str,
@@ -75,8 +74,8 @@ def get_album(
     return album
 
 
-@retry_if_timeout
 @cache
+@retry_if_timeout
 @log_errors(logger=logger)
 def get_track(
     album_slug: str,
@@ -118,8 +117,8 @@ def fetch_tracks(*track_page_urls: str) -> Iterator[AudioTrack]:
         return (task.result() for task in tasks if not task.exception())
 
 
-@retry_if_timeout
 @cache
+@retry_if_timeout
 @log_errors(logger=logger)
 def search_albums(
     query: str, album_type: AlbumTypes = AlbumTypes.EMPTY
@@ -137,8 +136,8 @@ def search_albums(
     ]
 
 
-@retry_if_timeout
 @cache
+@retry_if_timeout
 @log_errors(logger=logger)
 def get_publisher_albums(publisher_slug: str) -> list[AlbumShort]:
     url = f'{KHINSIDER_BASE_URL}/game-soundtracks/publisher/{publisher_slug}'
