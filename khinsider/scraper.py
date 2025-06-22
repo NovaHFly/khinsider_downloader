@@ -164,13 +164,13 @@ def download_many(
     """
     with ThreadPoolExecutor(max_workers=thread_count) as executor:
         for url in urls:
-            yield from _download(url, executor, download_path)
+            yield from _download(url, download_path, executor)
 
 
 def _download(
     url: str,
     download_path: Path,
-    executor: ThreadPoolExecutor = None,
+    executor: ThreadPoolExecutor | None = None,
 ) -> Iterator[Path]:
     extracted = parse_khinsider_url(url)
 
