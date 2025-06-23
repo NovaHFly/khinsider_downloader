@@ -107,3 +107,15 @@ class CacheManager:
     # TODO: Add typehints
     def __exit__(self, type, value, traceback) -> None:
         self.stop_garbage_collector()
+
+
+def get_manager(key: str = 'default', *args, **kwargs) -> CacheManager:
+    """Get manager with identifier [key].
+
+    Create manager if needed using args and kwargs."""
+    if key not in _running_managers:
+        manager = _running_managers[key] = CacheManager(*args, **kwargs)
+    return manager
+
+
+_running_managers: dict[str, CacheManager] = {}
