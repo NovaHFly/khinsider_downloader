@@ -99,9 +99,7 @@ def download_track_file(
 @contextmanager
 def setup_download(root_path: Path = DOWNLOADS_PATH) -> Iterator[Path]:
     """Setup download path and remove it when done."""
-    while download_id := randint(1, 999999):
-        pass
-
+    download_id = randint(1, 999999)
     download_dir = root_path / str(download_id)
 
     try:
