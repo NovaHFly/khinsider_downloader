@@ -101,13 +101,9 @@ class CacheManager:
 
         logger.info('Old cache deleted')
 
+    def __enter__(self) -> Self:
+        return self
 
-_manager: CacheManager | None = None
-
-
-def get_manager() -> CacheManager:
-    global _manager
-
-    if not _manager:
-        _manager = CacheManager()
-    return _manager
+    # TODO: Add typehints
+    def __exit__(self, type, value, traceback) -> None:
+        self.stop_garbage_collector()
