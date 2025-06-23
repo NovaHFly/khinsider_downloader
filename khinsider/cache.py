@@ -109,7 +109,7 @@ class CacheManager:
         self.stop_garbage_collector()
 
 
-def get_manager(key: str = 'default', *args, **kwargs) -> CacheManager:
+def get_cache_manager(key: str = 'default', *args, **kwargs) -> CacheManager:
     """Get manager with identifier [key].
 
     Create manager if needed using args and kwargs."""

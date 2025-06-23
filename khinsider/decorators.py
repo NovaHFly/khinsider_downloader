@@ -6,7 +6,7 @@ from typing import Callable, ParamSpec, TypeVar
 from requests.exceptions import Timeout
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
-from .cache import get_manager
+from .cache import get_cache_manager
 from .util import get_object_hash
 
 P = ParamSpec('P')
@@ -64,7 +64,7 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
 def cache(func: Callable[P, T]) -> Callable[P, T]:
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        cache_manager = get_manager()
+        cache_manager = get_cache_manager()
         call_signature = f'{func.__name__}/{args}/{kwargs}'
 
         if cached_value := cache_manager.get_cached_object(
