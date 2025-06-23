@@ -1,4 +1,6 @@
 from functools import partial
+from hashlib import md5
+from typing import Any
 from urllib.parse import quote, unquote
 
 from .constants import KHINSIDER_URL_REGEX
@@ -28,3 +30,10 @@ def full_unquote(in_: str, quote_layers: int = 2) -> str:
         in_ = unquote(in_)
 
     return in_
+
+
+def get_object_hash(obj: Any) -> str:
+    """Generate object md5 hash.
+
+    If object is not string use its str/repr"""
+    return md5(str(obj).encode()).hexdigest()

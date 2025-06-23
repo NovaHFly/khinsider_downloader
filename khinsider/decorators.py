@@ -7,6 +7,7 @@ from requests.exceptions import Timeout
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .cache import get_manager
+from .util import get_object_hash
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -66,13 +67,13 @@ def cache(func: Callable[P, T]) -> Callable[P, T]:
         cache_manager = get_manager()
         call_signature = f'{func.__name__}/{args}/{kwargs}'
 
-        if cached_value := cache_manager.get_cached_value(
-            cache_manager.get_hash(call_signature)
+        if cached_value := cache_manager.get_cached_object(
+            get_object_hash(call_signature)
         ):
             return cached_value
 
         result = func(*args, **kwargs)
-        cache_manager.cache_value(result, key_value=call_signature)
+        cache_manager.cache_object(result, key_value=call_signature)
 
         return result
 

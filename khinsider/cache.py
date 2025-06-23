@@ -1,21 +1,33 @@
 import logging
 from datetime import datetime
-from hashlib import md5
 from threading import Timer
-from typing import Any
+from typing import Any, Self
 
 from .constants import CACHE_LIFESPAN_DAYS
+from .util import get_object_hash
 
 logger = logging.getLogger('khinsider-cache')
 
 
 class CacheManager:
+    """Caching mechanism with built-in old cache removal.
+
+    Note: Always stop garbage collector when stopping program
+    to prevent any possible side effects from loose running thread."""
+
     def __init__(
         self,
         lifespan: int = CACHE_LIFESPAN_DAYS * 24 * 60 * 60,
         run_garbage_collector: bool = True,
         garbage_collector_interval: int = 6 * 60 * 60,
-    ):
+    ) -> None:
+        """
+        Args:
+            lifespan (int): Maximum cache lifespan. Defaults to 1 day.
+            run_garbage_collector (bool): Start garbage collector from get-go.
+                Defaults to True.
+            garbage_collector_interval (int): Interval at which garbage
+                collector will delete old cache. Defaults to 6 hours."""
         self.__table: dict[str, tuple[Any, datetime]] = {}
 
         self.__cache_lifespan = lifespan
@@ -26,24 +38,35 @@ class CacheManager:
         if self.__run_garbage_collector:
             self.start_garbage_collector()
 
-    def get_hash(self, value: Any) -> str:
-        return md5(str(value).encode()).hexdigest()
+    def cache_object(self, obj: Any, key_value: Any | None = None) -> str:
+        """Cache object.
 
-    def cache_value(self, value: Any, key_value: Any | None = None) -> str:
+        Args:
+            obj (Any): Object to cache;
+            key_value (Any|None): Value to use hashing function on.
+                Defaults to obj.
+
+        Returns:
+            (str): key_value md5 hash.
+        """
         if not key_value:
-            key_value = value
+            key_value = obj
 
-        md5_hash = self.get_hash(key_value)
-        self.__table[md5_hash] = value, datetime.now()
+        md5_hash = get_object_hash(key_value)
+        self.__table[md5_hash] = obj, datetime.now()
 
         return md5_hash
 
-    def get_cached_value(self, md5_hash: str) -> Any | None:
+    def get_cached_object(self, md5_hash: str) -> Any | None:
+        """Get object stored in cache.
+
+        If no object is stored under md5_hash return None."""
         if md5_hash not in self.__table:
             return None
         return self.__table[md5_hash][0]
 
     def start_garbage_collector(self) -> None:
+        """Start cache manager's garbage collector."""
         logger.info(
             'Started cache garbage collector. '
             f'Interval: {self.__cache_clear_interval} seconds'
@@ -53,12 +76,16 @@ class CacheManager:
             self.delete_old_cache,
         )
         self.__timer.start()
+        self.__run_garbage_collector = True
 
     def stop_garbage_collector(self) -> None:
+        """Stop cache manager's garbage collector."""
         self.__timer.cancel()
+        self.__run_garbage_collector = False
         logger.info('Cache garbage collector is stopped')
 
     def delete_old_cache(self) -> None:
+        """Delete cached objects with too long lifespan."""
         logger.info('Deleting old cache...')
 
         to_delete = []
