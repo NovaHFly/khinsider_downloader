@@ -113,7 +113,7 @@ def get_cache_manager(key: str = 'default', *args, **kwargs) -> CacheManager:
     """Get manager with identifier [key].
 
     Create manager if needed using args and kwargs."""
-    if key not in _running_managers:
+    if not (manager := _running_managers.get(key)):
         manager = _running_managers[key] = CacheManager(*args, **kwargs)
     return manager
 
