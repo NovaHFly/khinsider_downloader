@@ -1,6 +1,7 @@
 import logging
+import multiprocessing
+import time
 from datetime import datetime
-from threading import Timer
 from typing import Any, Self
 
 from .constants import CACHE_LIFESPAN_DAYS
@@ -18,7 +19,7 @@ class CacheManager:
     def __init__(
         self,
         lifespan: int = CACHE_LIFESPAN_DAYS * 24 * 60 * 60,
-        run_garbage_collector: bool = True,
+        garbage_collector_active: bool = True,
         garbage_collector_interval: int = 6 * 60 * 60,
     ) -> None:
         """
@@ -31,11 +32,9 @@ class CacheManager:
         self.__table: dict[str, tuple[Any, datetime]] = {}
 
         self.__cache_lifespan = lifespan
-        self.__cache_clear_interval = garbage_collector_interval
+        self.__garbage_collector_interval = garbage_collector_interval
 
-        self.__run_garbage_collector = run_garbage_collector
-
-        if self.__run_garbage_collector:
+        if garbage_collector_active:
             self.start_garbage_collector()
 
     def cache_object(self, obj: Any, key_value: Any | None = None) -> str:
@@ -65,23 +64,26 @@ class CacheManager:
             return None
         return self.__table[md5_hash][0]
 
+    def __run_garbage_collector(self) -> None:
+        while True:
+            time.sleep(self.__garbage_collector_interval)
+            self.delete_old_cache()
+
     def start_garbage_collector(self) -> None:
         """Start cache manager's garbage collector."""
         logger.info(
             'Started cache garbage collector. '
-            f'Interval: {self.__cache_clear_interval} seconds'
+            f'Interval: {self.__garbage_collector_interval} seconds'
         )
-        self.__timer = Timer(
-            self.__cache_clear_interval,
-            self.delete_old_cache,
+        self.__collector_process = multiprocessing.Process(
+            target=self.__run_garbage_collector
         )
-        self.__timer.start()
-        self.__run_garbage_collector = True
+        self.__collector_process.start()
 
     def stop_garbage_collector(self) -> None:
         """Stop cache manager's garbage collector."""
-        self.__timer.cancel()
-        self.__run_garbage_collector = False
+        self.__collector_process.terminate()
+        self.__collector_process.join()
         logger.info('Cache garbage collector is stopped')
 
     def delete_old_cache(self) -> None:
@@ -95,9 +97,6 @@ class CacheManager:
 
         for key in to_delete:
             self.__table.pop(key)
-
-        if self.__run_garbage_collector:
-            self.start_garbage_collector()
 
         logger.info('Old cache deleted')
 
