@@ -66,7 +66,7 @@ class CacheManager:
             return None
         return self.__table[md5_hash][0]
 
-    def __run_garbage_collector(self) -> None:
+    def _run_garbage_collector(self) -> None:
         while True:
             time.sleep(self.__garbage_collector_interval)
             self.delete_old_cache()
@@ -78,7 +78,7 @@ class CacheManager:
             f'Interval: {self.__garbage_collector_interval} seconds'
         )
         self.__collector_process = multiprocessing.Process(
-            target=self.__run_garbage_collector
+            target=self._run_garbage_collector
         )
         self.__collector_process.start()
 
