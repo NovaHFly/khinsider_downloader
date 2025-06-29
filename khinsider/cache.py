@@ -11,6 +11,8 @@ logger = logging.getLogger('khinsider-cache')
 
 
 class CacheManager:
+    __instance: Self | None = None
+
     """Caching mechanism with built-in old cache removal.
 
     Note: Always stop garbage collector when stopping program
@@ -107,14 +109,18 @@ class CacheManager:
     def __exit__(self, type, value, traceback) -> None:
         self.stop_garbage_collector()
 
+    @classmethod
+    def get_manager(cls, *args, **kwargs) -> Self:
+        """Get running cache manager or create new.
 
-def get_cache_manager(key: str = 'default', *args, **kwargs) -> CacheManager:
-    """Get manager with identifier [key].
+        Args:
+            lifespan (int): Maximum cache lifespan. Defaults to 1 day.
+            run_garbage_collector (bool): Start garbage collector from get-go.
+                Defaults to True.
+            garbage_collector_interval (int): Interval at which garbage
+                collector will delete old cache. Defaults to 6 hours."""
+        if cls.__instance:
+            return cls.__instance
 
-    Create manager if needed using args and kwargs."""
-    if not (manager := _running_managers.get(key)):
-        manager = _running_managers[key] = CacheManager(*args, **kwargs)
-    return manager
-
-
-_running_managers: dict[str, CacheManager] = {}
+        cls.__instance = cls(*args, **kwargs)
+        return cls.__instance
