@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
+from khinsider.cache import CacheManager
 from khinsider.constants import MAX_CONCURRENT_REQUESTS
 from khinsider.decorators import log_time
 from khinsider.files import download_many
@@ -73,6 +74,8 @@ def main_cli() -> None:
         format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
     )
     logger.addHandler(logging.StreamHandler())
+
+    CacheManager.get_manager(run_garbage_collector=False)
 
     args = construct_argparser().parse_args()
 
