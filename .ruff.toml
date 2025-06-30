@@ -2,7 +2,24 @@ line-length = 79
 exclude = [".venv/"]
 
 [lint]
-extend-select = ["I", "E", "W", "F", "C", "D202", "ERA"]
+extend-select = [
+    "I",
+    "E",
+    "W",
+    "F",
+    "C",
+    "D101",
+    "D102",
+    "D103",
+    "D104",
+    "D201",
+    "D202",
+    "D204",
+    "D205",
+    "D209",
+    "D417",
+    "ERA",
+]
 preview = true
 
 [lint.isort]
@@ -12,9 +29,6 @@ order-by-type = false
 
 [lint.flake8-quotes]
 inline-quotes = "single"
-
-[lint.pydocstyle]
-convention = "google"
 
 [format]
 quote-style = "single"
