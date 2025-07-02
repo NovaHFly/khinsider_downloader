@@ -19,12 +19,12 @@ extend-select = [
     "D209",
     "D417",
     "ERA",
+    "RUF022",
 ]
 preview = true
 
 [lint.isort]
 combine-as-imports = true
-known-first-party = ["pixiv_bot"]
 order-by-type = false
 
 [lint.flake8-quotes]
