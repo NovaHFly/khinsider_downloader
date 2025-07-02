@@ -1,3 +1,12 @@
+"""Music downloader.
+
+Downloads music from downloads.khinsider.py
+
+Available sub-modules:
+-
+"""
+
+from .cache import CacheManager
 from .constants import (
     ALBUM_BASE_URL,
     DOWNLOADS_PATH,
@@ -36,18 +45,19 @@ __all__ = [
     'KHINSIDER_BASE_URL',
     'KHINSIDER_URL_REGEX',
     'MAX_CONCURRENT_REQUESTS',
+    'Album',
+    'AlbumShort',
+    'AudioTrack',
+    'CacheManager',
     'InvalidUrl',
     'KhinsiderError',
     'ObjectDoesNotExist',
     'download_many',
     'download_track_file',
-    'Album',
-    'AlbumShort',
-    'AudioTrack',
     'fetch_tracks',
     'get_album',
     'get_publisher_albums',
     'get_track',
-    'search_albums',
     'parse_khinsider_url',
+    'search_albums',
 ]
