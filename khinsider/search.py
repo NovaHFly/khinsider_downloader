@@ -1,7 +1,7 @@
 from typing import Self
 
 from .enums import AlbumTypes
-from .util import normalize_query
+from .util import format_url_query
 
 
 class QueryBuilder:
@@ -12,7 +12,7 @@ class QueryBuilder:
         self._type = AlbumTypes.EMPTY
 
     def search_for(self, query: str) -> Self:
-        self._search = normalize_query(query)
+        self._search = format_url_query(query)
         return self
 
     def album_year(self, year: str) -> Self:

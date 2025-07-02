@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Self
 
 from .constants import CACHE_LIFESPAN_DAYS
-from .util import get_object_hash
+from .util import get_object_md5
 
 logger = logging.getLogger('khinsider-cache')
 
@@ -92,7 +92,7 @@ class CacheManager:
         if not key_value:
             key_value = obj
 
-        md5_hash = get_object_hash(key_value)
+        md5_hash = get_object_md5(key_value)
         self.__table[md5_hash] = obj, datetime.now()
 
         return md5_hash

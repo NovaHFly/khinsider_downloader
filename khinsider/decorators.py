@@ -7,7 +7,7 @@ from requests.exceptions import Timeout
 from tenacity import retry, retry_if_exception_type, stop_after_attempt
 
 from .cache import CacheManager
-from .util import get_object_hash
+from .util import get_object_md5
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -68,7 +68,7 @@ def cache(func: Callable[P, T]) -> Callable[P, T]:
         call_signature = f'{func.__name__}/{args}/{kwargs}'
 
         if cached_value := cache_manager.get_cached_object(
-            get_object_hash(call_signature)
+            get_object_md5(call_signature)
         ):
             return cached_value
 
