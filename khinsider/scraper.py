@@ -6,13 +6,13 @@ from logging import getLogger
 import cloudscraper
 from bs4 import BeautifulSoup, Tag
 
+from ._types import AlbumBaseJson, AlbumPageJson, PublisherJson, TrackJson
 from .constants import (
     KHINSIDER_BASE_URL,
     MAX_CONCURRENT_REQUESTS,
 )
 from .decorators import log_errors, retry_if_timeout
 from .exceptions import NoRequestedDataInHtml
-from .types import AlbumBaseJson, AlbumPageJson, PublisherJson, TrackJson
 from .util import parse_khinsider_url
 from .validators import (
     khinsider_object_exists,

@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Callable
 
+from ._types import PublisherJson
 from .constants import ALBUM_BASE_URL
-from .types import PublisherJson
 from .util import full_unquote, parse_khinsider_url
 
 
