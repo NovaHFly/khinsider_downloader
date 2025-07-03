@@ -2,9 +2,7 @@ import argparse
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from pprint import pprint
 
-from khinsider.api import get_album, search_albums
 from khinsider.cache import CacheManager
 from khinsider.constants import MAX_CONCURRENT_REQUESTS
 from khinsider.decorators import log_time
@@ -23,22 +21,10 @@ def _construct_argparser() -> argparse.ArgumentParser:
         required=False,
     )
     input_group.add_argument(
-        '--search',
-        '-s',
-        nargs='*',
-        help='Search for albums',
-        required=False,
-    )
-    input_group.add_argument(
         'URLS',
         help='Album or track urls',
         nargs='*',
         default=[],
-    )
-    input_group.add_argument(
-        '--album',
-        '-a',
-        required=False,
     )
     parser.add_argument(
         '--threads',
@@ -77,23 +63,10 @@ def _main_cli() -> None:
 
     args = _construct_argparser().parse_args()
 
-    if args.album:
-        pprint(get_album(args.album))
-        return
-
     logger.info('Started cli script')
     logger.info(f'File: {args.file}')
     logger.info(f'Urls: {args.URLS}')
-    logger.info(f'Search_query: {args.search}')
     logger.info(f'Thread count: {args.threads}')
-
-    if args.search:
-        for i, result in enumerate(
-            search_albums(' '.join(args.search)),
-            start=1,
-        ):
-            pprint(f'{i}. {result.title}')
-        return
 
     urls = args.URLS or Path(args.file).read_text().splitlines()
 
