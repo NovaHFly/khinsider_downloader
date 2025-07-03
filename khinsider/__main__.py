@@ -69,12 +69,10 @@ def _summarize_download(
 def _main_cli() -> None:
     logging.basicConfig(
         level=logging.INFO,
-        filename='main.log',
-        filemode='a',
+        handlers=(logging.FileHandler('main.log'), logging.StreamHandler()),
         format='%(asctime)s, %(levelname)s, %(message)s, %(name)s',
+        force=True,
     )
-    logger.addHandler(logging.StreamHandler())
-
     CacheManager.get_manager(use_garbage_collector=False)
 
     args = _construct_argparser().parse_args()
