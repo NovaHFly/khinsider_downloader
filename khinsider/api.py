@@ -9,7 +9,7 @@ from .scraper import (
     scrape_search_page,
     scrape_track_page,
 )
-from .search import QueryBuilder
+from .url import QueryBuilder
 
 logger = logging.getLogger('khinsider-api')
 
