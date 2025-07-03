@@ -6,10 +6,11 @@ from pathlib import Path
 from random import randint
 from shutil import rmtree
 
+from .api import get_album, get_track
 from .constants import DOWNLOADS_PATH, MAX_CONCURRENT_REQUESTS
 from .decorators import log_errors, retry_if_timeout
-from .models import AudioTrack
-from .scraper import get_album, get_track, scraper
+from .models import Track
+from .scraper import scraper
 from .util import parse_khinsider_url
 
 logger = logging.getLogger('khinsider-files')
@@ -78,7 +79,7 @@ def _fetch_and_download_track(
 @retry_if_timeout
 @log_errors(logger=logger)
 def download_track_file(
-    track: AudioTrack,
+    track: Track,
     path: Path = DOWNLOADS_PATH,
 ) -> Path:
     """Download track file."""

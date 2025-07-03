@@ -7,8 +7,7 @@ from .constants import KHINSIDER_URL_REGEX
 from .exceptions import InvalidUrl
 
 
-# TODO: Review this func's uses, maybe rename or redo.
-def format_url_query(query: str) -> str:
+def escape_url_query(query: str) -> str:
     """Quote all url-reserved characters in url query.
 
     :param str query: Unescaped url query.

@@ -4,16 +4,16 @@ from collections.abc import Sequence
 from pathlib import Path
 from pprint import pprint
 
+from khinsider.api import get_album, search_albums
 from khinsider.cache import CacheManager
 from khinsider.constants import MAX_CONCURRENT_REQUESTS
 from khinsider.decorators import log_time
 from khinsider.files import download_many
-from khinsider.scraper import get_album, search_albums
 
 logger = logging.getLogger('khinsider')
 
 
-def construct_argparser() -> argparse.ArgumentParser:
+def _construct_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument(
@@ -50,7 +50,7 @@ def construct_argparser() -> argparse.ArgumentParser:
     return parser
 
 
-def summarize_download(
+def _summarize_download(
     downloads: Sequence[Path | None],
 ) -> None:
     download_count = len(downloads)
@@ -66,7 +66,7 @@ def summarize_download(
 
 
 @log_time
-def main_cli() -> None:
+def _main_cli() -> None:
     logging.basicConfig(
         level=logging.INFO,
         filename='main.log',
@@ -75,9 +75,9 @@ def main_cli() -> None:
     )
     logger.addHandler(logging.StreamHandler())
 
-    CacheManager.get_manager(run_garbage_collector=False)
+    CacheManager.get_manager(use_garbage_collector=False)
 
-    args = construct_argparser().parse_args()
+    args = _construct_argparser().parse_args()
 
     if args.album:
         pprint(get_album(args.album))
@@ -94,14 +94,14 @@ def main_cli() -> None:
             search_albums(' '.join(args.search)),
             start=1,
         ):
-            pprint(f'{i}. {result.name}')
+            pprint(f'{i}. {result.title}')
         return
 
     urls = args.URLS or Path(args.file).read_text().splitlines()
 
     downloads = tuple(download_many(*urls, thread_count=args.threads))
-    summarize_download(downloads)
+    _summarize_download(downloads)
 
 
 if __name__ == '__main__':
-    main_cli()
+    _main_cli()

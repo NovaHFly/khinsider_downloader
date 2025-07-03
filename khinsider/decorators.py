@@ -12,23 +12,23 @@ from .util import get_object_md5
 P = ParamSpec('P')
 T = TypeVar('T')
 
-Decorator = Callable[[Callable[P, T]], Callable[P, T]]
-ExceptionGroup = tuple[Exception, ...]
 
 global_logger = logging.getLogger('khinsider')
 
 
 def log_errors(
-    func: Callable[P, T] | None = None,
-    *,
-    logger: logging.Logger | None = None,
-) -> Callable[[Callable[P, T]], Callable[P, T]] | Callable[P, T]:
-    """Log exceptions raised while calling function."""
+    *, logger: logging.Logger | None = None
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Add logging of raised exceptions to the function.
+
+    :param Logger | None logger: Logger to use.
+        Default is the global logger.
+    """
     local_logger = logger or global_logger
 
-    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+    def _decorator(func: Callable[P, T]) -> Callable[P, T]:
         @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        def _wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             try:
                 return func(*args, **kwargs)
             except Exception as e:
@@ -37,12 +37,9 @@ def log_errors(
                 )
                 raise
 
-        return wrapper
+        return _wrapper
 
-    if func:
-        return decorator(func)
-
-    return decorator
+    return _decorator
 
 
 def log_time(func: Callable[P, T]) -> Callable[P, T]:
@@ -62,6 +59,8 @@ def log_time(func: Callable[P, T]) -> Callable[P, T]:
 
 
 def cache(func: Callable[P, T]) -> Callable[P, T]:
+    """Cache function call result."""
+
     @wraps(func)
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         cache_manager = CacheManager.get_manager()

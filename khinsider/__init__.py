@@ -1,11 +1,14 @@
 """Music downloader.
 
 Downloads music from downloads.khinsider.py
-
-Available sub-modules:
--
 """
 
+from .api import (
+    get_album,
+    get_publisher_albums,
+    get_track,
+    search_albums,
+)
 from .cache import CacheManager
 from .constants import (
     ALBUM_BASE_URL,
@@ -17,6 +20,7 @@ from .constants import (
 from .exceptions import (
     InvalidUrl,
     KhinsiderError,
+    NoRequestedDataInHtml,
     ObjectDoesNotExist,
 )
 from .files import (
@@ -26,14 +30,10 @@ from .files import (
 from .models import (
     Album,
     AlbumShort,
-    AudioTrack,
+    Track,
 )
 from .scraper import (
-    fetch_tracks,
-    get_album,
-    get_publisher_albums,
-    get_track,
-    search_albums,
+    fetch_mp3_urls,
 )
 from .util import (
     parse_khinsider_url,
@@ -47,14 +47,15 @@ __all__ = [
     'MAX_CONCURRENT_REQUESTS',
     'Album',
     'AlbumShort',
-    'AudioTrack',
     'CacheManager',
     'InvalidUrl',
     'KhinsiderError',
+    'NoRequestedDataInHtml',
     'ObjectDoesNotExist',
+    'Track',
     'download_many',
     'download_track_file',
-    'fetch_tracks',
+    'fetch_mp3_urls',
     'get_album',
     'get_publisher_albums',
     'get_track',

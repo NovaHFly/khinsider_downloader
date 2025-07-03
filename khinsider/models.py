@@ -1,108 +1,78 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cached_property
-from json import JSONEncoder
-from typing import Protocol, Self
+from typing import Callable
 
 from .constants import ALBUM_BASE_URL
+from .types import PublisherJson
 from .util import full_unquote, parse_khinsider_url
-
-
-class BaseModel(Protocol):
-    def to_json(self) -> dict: ...
-
-    @classmethod
-    def from_json(cls) -> Self: ...
-
-
-class KhinsiderJSONEncoder(JSONEncoder):
-    def default(self, o: BaseModel):
-        try:
-            return o.to_json()
-        except AttributeError:
-            return super().default(o)
 
 
 @dataclass
 class Publisher:
+    """Some music publisher."""
+
     name: str
     slug: str
 
     def __str__(self) -> str:
-        return f'Uploader "{self.name}"'
-
-    def to_json(self) -> dict[str, str]:
-        return {
-            'name': self.name,
-            'slug': self.slug,
-        }
-
-    @classmethod
-    def from_json(cls, data_json: dict) -> Self:
-        return cls(**data_json)
+        return f'Publisher "{self.name}"'
 
 
 @dataclass
-class AudioTrack:
-    album: 'Album' = field(repr=False)
+class Track:
+    """Some music track from khinsider."""
+
     page_url: str
     mp3_url: str = field(repr=False)
+
+    _album_getter: Callable[[], Album]
 
     def __str__(self) -> str:
         return f'{self.album.slug} - {self.filename}'
 
     @cached_property
+    def album(self) -> Album:
+        """Album to which track belongs."""
+        return self._album_getter()
+
+    @cached_property
     def filename(self) -> str:
+        """Track's human-readable filename."""
         return full_unquote(parse_khinsider_url(self.page_url)[1])
-
-    def to_json(self) -> dict:
-        return {
-            'album': self.album.to_json(),
-            'page_url': self.page_url,
-            'mp3_url': self.mp3_url,
-        }
-
-    @classmethod
-    def from_json(cls, data_json: dict) -> Self:
-        data_json['album'] = Album.from_json(data_json['album'])
-        return cls(**data_json)
 
 
 @dataclass
 class AlbumShort:
-    name: str
+    """Album short data used for search results."""
+
+    title: str
     type: str | None
     year: str | None
     slug: str
 
-    @property
-    def url(self) -> str:
-        return f'{ALBUM_BASE_URL}/{self.slug}'
+    _album_getter: Callable[[str], Album]
 
-    def to_json(self) -> dict:
-        return {
-            'name': self.name,
-            'type': self.type,
-            'year': self.year,
-            'slug': self.slug,
-        }
-
-    @classmethod
-    def from_json(cls, data_json: dict) -> Self:
-        return cls(**data_json)
+    @cached_property
+    def album(self) -> Album:
+        """Full version of album data."""
+        return self._album_getter(self.slug)
 
 
 @dataclass
 class Album:
-    name: str
+    """Some album from khinsider."""
+
+    title: str
     slug: str
 
-    # TODO: Rename to album_picture_urls
-    thumbnail_urls: Sequence[str]
+    album_art: Sequence[str]
 
     year: str | None
     type: str | None
-    publisher: Publisher | None
+    _publisher: PublisherJson | None
 
     track_urls: list[str] = field(
         repr=False,
@@ -111,26 +81,17 @@ class Album:
 
     @property
     def track_count(self) -> int:
+        """Album track count."""
         return len(self.track_urls)
 
     @property
     def url(self) -> str:
+        """Album page url."""
         return f'{ALBUM_BASE_URL}/{self.slug}'
 
-    def to_json(self) -> dict:
-        return {
-            'name': self.name,
-            'slug': self.slug,
-            'thumbnail_urls': list(self.thumbnail_urls),
-            'year': self.year,
-            'type': self.type,
-            'publisher': (
-                None if not self.publisher else self.publisher.to_json()
-            ),
-        }
-
-    @classmethod
-    def from_json(cls, data_json: dict) -> Self:
-        if publisher_json := data_json['publisher']:
-            data_json['publisher'] = Publisher.from_json(publisher_json)
-        return cls(**data_json)
+    @cached_property
+    def publisher(self) -> Publisher | None:
+        """Publisher which published this album."""
+        if not self._publisher:
+            return None
+        return Publisher(**self._publisher)
