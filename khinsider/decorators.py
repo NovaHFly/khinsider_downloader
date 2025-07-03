@@ -19,7 +19,7 @@ global_logger = logging.getLogger('khinsider')
 def log_errors(
     *, logger: logging.Logger | None = None
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-    """Add logging of raised exceptions to the function.
+    """Log exceptions raised during function execution.
 
     :param Logger | None logger: Logger to use.
         Default is the global logger.
@@ -36,6 +36,60 @@ def log_errors(
                     f'{func.__name__}(args: {args}, kwargs: {kwargs}): {e}'
                 )
                 raise
+
+        return _wrapper
+
+    return _decorator
+
+
+def log_inputs(
+    *,
+    logger: logging.Logger,
+    level: int = logging.DEBUG,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Log function's inputs.
+
+    :param Logger | None logger: Logger to use.
+        Default is the global logger.
+    :param int level: logging level to log messages under. Default is DEBUG.
+    """
+    local_logger = logger or global_logger
+
+    def _decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
+        def _wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            local_logger.log(
+                level, f'{func.__name__}(args: {args}, kwargs: {kwargs})'
+            )
+            return func(*args, **kwargs)
+
+        return _wrapper
+
+    return _decorator
+
+
+def log_outputs(
+    *,
+    logger: logging.Logger | None = None,
+    level: int = logging.DEBUG,
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Log function's output.
+
+    :param Logger | None logger: Logger to use.
+        Default is the global logger.
+    :param int level: logging level to log messages under. Default is DEBUG.
+    """
+    local_logger = logger or global_logger
+
+    def _decorator(func: Callable[P, T]) -> Callable[P, T]:
+        @wraps(func)
+        def _wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            out = func(*args, **kwargs)
+            local_logger.log(
+                level,
+                f'{func.__name__}(args: {args}, kwargs: {kwargs}) -> {out}',
+            )
+            return out
 
         return _wrapper
 

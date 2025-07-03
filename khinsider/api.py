@@ -1,5 +1,7 @@
+import logging
+
 from .constants import KHINSIDER_BASE_URL
-from .decorators import cache
+from .decorators import cache, log_inputs, log_outputs
 from .enums import AlbumTypes
 from .models import Album, AlbumShort, Track
 from .scraper import (
@@ -9,8 +11,12 @@ from .scraper import (
 )
 from .search import QueryBuilder
 
+logger = logging.getLogger('khinsider-api')
+
 
 @cache
+@log_inputs(logger=logger)
+@log_outputs(logger=logger)
 def get_album(album_slug: str) -> Album:
     """Get album data by its slug.
 
@@ -24,6 +30,8 @@ def get_album(album_slug: str) -> Album:
 
 
 @cache
+@log_inputs(logger=logger)
+@log_outputs(logger=logger)
 def get_track(album_slug: str, track_name: str) -> Track:
     """Get track data by its slug and name.
 
@@ -47,6 +55,8 @@ def get_track(album_slug: str, track_name: str) -> Track:
 
 
 @cache
+@log_inputs(logger=logger)
+@log_outputs(logger=logger)
 def search_albums(
     search_query: str,
     album_type: AlbumTypes = AlbumTypes.EMPTY,
@@ -78,6 +88,8 @@ def search_albums(
 
 
 @cache
+@log_inputs(logger=logger)
+@log_outputs(logger=logger)
 def get_publisher_albums(publisher_slug: str):
     """Get all albums publisher by this publisher
 
