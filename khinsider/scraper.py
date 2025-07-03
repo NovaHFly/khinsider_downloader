@@ -148,7 +148,7 @@ def scrape_track_page(track_url: str) -> TrackJson:
     """
 
     def _parse_track_html() -> TrackJson:
-        if not (audio_match := re.search(r'<audio.+src="(.+)', track_html)):
+        if not (audio_match := re.search(r'<audio.+src="(.+)"', track_html)):
             err_msg = 'Mp3 audio url not found in html'
             logger.error(err_msg)
             raise NoRequestedDataInHtml(err_msg)
