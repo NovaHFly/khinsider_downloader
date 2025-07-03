@@ -1,5 +1,3 @@
-from functools import partial
-
 from .constants import KHINSIDER_BASE_URL
 from .decorators import cache
 from .enums import AlbumTypes
@@ -43,7 +41,8 @@ def get_track(album_slug: str, track_name: str) -> Track:
 
     return Track(
         **track_json,
-        _album_getter=partial(get_album, album_slug=album_slug),
+        _album_slug=album_slug,
+        _album_getter=get_album,
     )
 
 

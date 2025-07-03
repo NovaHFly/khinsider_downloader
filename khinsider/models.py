@@ -28,7 +28,8 @@ class Track:
     page_url: str
     mp3_url: str = field(repr=False)
 
-    _album_getter: Callable[[], Album]
+    _album_slug: str
+    _album_getter: Callable[[str], Album]
 
     def __str__(self) -> str:
         return f'{self.album.slug} - {self.filename}'
@@ -36,7 +37,7 @@ class Track:
     @cached_property
     def album(self) -> Album:
         """Album to which track belongs."""
-        return self._album_getter()
+        return self._album_getter(self._album_slug)
 
     @cached_property
     def filename(self) -> str:
