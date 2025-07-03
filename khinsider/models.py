@@ -28,8 +28,18 @@ class Track:
     page_url: str
     mp3_url: str = field(repr=False)
 
-    _album_slug: str
-    _album_getter: Callable[[str], Album]
+    _album_slug: str = field(
+        repr=False,
+        hash=False,
+        compare=False,
+        kw_only=True,
+    )
+    _album_getter: Callable[[str], Album] = field(
+        repr=False,
+        hash=False,
+        compare=False,
+        kw_only=True,
+    )
 
     def __str__(self) -> str:
         return f'{self.album.slug} - {self.filename}'
@@ -54,7 +64,12 @@ class AlbumShort:
     year: str | None
     slug: str
 
-    _album_getter: Callable[[str], Album]
+    _album_getter: Callable[[str], Album] = field(
+        repr=False,
+        hash=False,
+        compare=False,
+        kw_only=True,
+    )
 
     @cached_property
     def album(self) -> Album:
@@ -73,7 +88,12 @@ class Album:
 
     year: str | None
     type: str | None
-    _publisher: PublisherJson | None
+    _publisher: PublisherJson | None = field(
+        repr=False,
+        hash=False,
+        compare=False,
+        kw_only=True,
+    )
 
     track_urls: list[str] = field(
         repr=False,
