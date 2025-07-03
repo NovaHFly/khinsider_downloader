@@ -44,7 +44,7 @@ def _download(
         yield _fetch_and_download_track(*extracted, path=dl_path)
         return
 
-    album = get_album(extracted[1])
+    album = get_album(extracted[0])
 
     if not executor:
         yield from (
