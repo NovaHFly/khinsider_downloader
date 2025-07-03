@@ -22,3 +22,7 @@ MAX_CONCURRENT_REQUESTS = 5
 
 CACHE_LIFESPAN_DAYS = 1
 """Maximum number of days cached values are conserved."""
+
+MINUTE_SECONDS = 60
+HOUR_SECONDS = 60 * MINUTE_SECONDS
+DAY_SECONDS = 24 * HOUR_SECONDS

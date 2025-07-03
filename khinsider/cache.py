@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 from typing import Any, Self
 
-from .constants import CACHE_LIFESPAN_DAYS
+from .constants import CACHE_LIFESPAN_DAYS, DAY_SECONDS, HOUR_SECONDS
 from .util import get_object_md5
 
 logger = logging.getLogger('khinsider-cache')
@@ -54,9 +54,9 @@ class CacheManager:
     @classmethod
     def get_manager(
         cls,
-        lifespan: int = CACHE_LIFESPAN_DAYS * 24 * 60 * 60,
+        lifespan: int = CACHE_LIFESPAN_DAYS * DAY_SECONDS,
         use_garbage_collector: bool = True,
-        garbage_collector_interval: int = 6 * 60 * 60,
+        garbage_collector_interval: int = 6 * HOUR_SECONDS,
     ) -> Self:
         """Get running cache manager or create new.
 
