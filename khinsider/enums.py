@@ -2,8 +2,12 @@ from enum import StrEnum
 
 
 class AlbumTypes(StrEnum):
+    """Album types available on downloads.khinsider.com."""
+
     EMPTY = '0'
-    """Mostly arrangements only, can catch some from other groups."""
+    """No filtering. For some queries might not return full results.
+    In such cases better to use one of options below.
+    """
     SOUNDTRACKS = '1'
     """Soundtracks only."""
     GAMERIPS = '2'
